@@ -10,17 +10,19 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.8
+  qr_flutter: ^4.1.0  # Ensure this is the latest version
+  path_provider: ^2.0.11   # Ensure this is included
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
 
   assets:
-    - assets/splash_logo.jpg  # Update with the actual image file name
+    - assets/splash_logo.jpg
+    - assets/hpbg1.png
+    # Update with the actual image file name

@@ -1,25 +1,40 @@
 import 'package:flutter/material.dart';
-class SplashScreen extends StatelessWidget {
+import 'home_page.dart';  // Import HomePage
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(seconds: 3), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),  // Navigate to HomePage
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background image from assets
           Image.asset(
             'assets/splash_logo.jpg',  // Your splash image file
-            fit: BoxFit.cover,         // Cover the entire screen
+            fit: BoxFit.cover,
           ),
-          // Centered logo text
           Positioned(
-            bottom: 50,                // Position the text at the bottom
+            bottom: 50,
             left: 0,
             right: 0,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Using Text.rich to combine text and icon
                 RichText(
                   text: TextSpan(
                     style: TextStyle(
@@ -28,18 +43,18 @@ class SplashScreen extends StatelessWidget {
                       color: Colors.white,
                     ),
                     children: [
-                      TextSpan(text: 'PicT'),  // "PicT" part of the logo
+                      TextSpan(text: 'PicT'),
                       WidgetSpan(
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
+                          padding: const EdgeInsets.only(bottom: 5.0),
                           child: Icon(
-                            Icons.camera_alt,  // Camera icon
+                            Icons.camera_alt,
                             color: Colors.white,
-                            size: 48,          // Same size as the text
+                            size: 38,
                           ),
                         ),
                       ),
-                      TextSpan(text: 'ra'),  // "ra" part of the logo
+                      TextSpan(text: 'ra'),
                     ],
                   ),
                 ),
