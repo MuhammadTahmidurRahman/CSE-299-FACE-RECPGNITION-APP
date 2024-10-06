@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';  // Import HomePage
+import 'welcome.dart';  // Assuming welcome.dart is your Welcome page
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -10,11 +10,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),  // Navigate to HomePage
-      );
+
+    // Add a post-frame callback to ensure the widget tree is fully built before preloading images
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Preload the splash screen image
+      precacheImage(AssetImage('assets/splash_logo.jpg'), context).then((_) {
+        // Navigate to WelcomePage after 3 seconds
+        Future.delayed(Duration(seconds: 3), () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => WelcomePage()),
+          );
+        });
+      });
     });
   }
 
@@ -24,10 +31,12 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Background image from assets
           Image.asset(
-            'assets/splash_logo.jpg',  // Your splash image file
+            'assets/splash_logo.jpg',
             fit: BoxFit.cover,
           ),
+          // Centered logo text
           Positioned(
             bottom: 50,
             left: 0,
@@ -35,6 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Using Text.rich to combine text and icon
                 RichText(
                   text: TextSpan(
                     style: TextStyle(
@@ -46,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       TextSpan(text: 'PicT'),
                       WidgetSpan(
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 5.0),
+                          padding: const EdgeInsets.only(bottom: 4),
                           child: Icon(
                             Icons.camera_alt,
                             color: Colors.white,
