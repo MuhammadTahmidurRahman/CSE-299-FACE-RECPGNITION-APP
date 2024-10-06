@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home.dart';  // Import the home page to navigate after signup
+import 'home_page.dart';  // Import the home page to navigate after signup
 
 class SignupPage extends StatefulWidget {
   @override

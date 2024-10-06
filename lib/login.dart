@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'forgot_password.dart';  // Forgot password page import
-import 'home.dart';  // Home page import
+import 'home_page.dart';  // Home page import
 
 class LoginPage extends StatefulWidget {
   @override
