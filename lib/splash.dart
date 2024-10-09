@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'welcome.dart';  // Assuming welcome.dart is your Welcome page
+import 'welcome.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -11,7 +11,6 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    // Add a post-frame callback to ensure the widget tree is fully built before preloading images
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Preload the splash screen image
       precacheImage(AssetImage('assets/splash_logo.jpg'), context).then((_) {
@@ -31,12 +30,11 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background image from assets
           Image.asset(
             'assets/splash_logo.jpg',
             fit: BoxFit.cover,
           ),
-          // Centered logo text
+
           Positioned(
             bottom: 50,
             left: 0,
@@ -44,7 +42,6 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Using Text.rich to combine text and icon
                 RichText(
                   text: TextSpan(
                     style: TextStyle(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'signup.dart'; // Import the signup page
-import 'login.dart';  // Import the login page
+import 'signup.dart';
+import 'login.dart';
 
 class WelcomePage extends StatelessWidget {
   @override
@@ -9,14 +9,13 @@ class WelcomePage extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background image from assets
           Image.asset(
-            'assets/splash_logo.jpg',  // Use the same image as in splash screen
+            'assets/splash_logo.jpg',
             fit: BoxFit.cover,
           ),
           // Title and message
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.25,  // A little above center
+            top: MediaQuery.of(context).size.height * 0.25,
             left: 0,
             right: 0,
             child: Column(
@@ -53,19 +52,19 @@ class WelcomePage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20),
-                // Semi-transparent background for the welcome message
+
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   margin: EdgeInsets.symmetric(horizontal: 30),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),  // Semi-transparent background
+                    color: Colors.black.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     "Welcome to PicTora! Create an account with us and enjoy effortless photo organization at your fingertips!",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20,  // Adjusted size for 5 lines
+                      fontSize: 20,
                       color: Colors.white,
                       shadows: [
                         Shadow(
@@ -92,7 +91,7 @@ class WelcomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => SignupPage()), // Navigate to Signup Page
+                      MaterialPageRoute(builder: (context) => SignupPage()),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -115,7 +114,7 @@ class WelcomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => LoginPage()), // Navigate to Login Page
+                      MaterialPageRoute(builder: (context) => LoginPage()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

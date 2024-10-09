@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'forgot_password.dart';  // Forgot password page import
-import 'home_page.dart';  // Home page import
+import 'forgot_password.dart';
+import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -17,11 +17,11 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',  // Background image for the login page
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
           SafeArea(
-            child: SingleChildScrollView(  // Make the content scrollable when keyboard appears
+            child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
                     IconButton(
                       icon: Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        Navigator.pop(context);  // Navigate back to Welcome Page
+                        Navigator.pop(context);
                       },
                     ),
                     SizedBox(height: 20),
@@ -81,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureText = !_obscureText;  // Toggle password visibility
+                              _obscureText = !_obscureText;
                             });
                           },
                         ),

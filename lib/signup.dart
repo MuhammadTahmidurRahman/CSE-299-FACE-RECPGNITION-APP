@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';  // Import the home page to navigate after signup
+import 'home_page.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -17,7 +17,7 @@ class _SignupPageState extends State<SignupPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',  // Background image, same as login
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
           SafeArea(
@@ -30,7 +30,7 @@ class _SignupPageState extends State<SignupPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () {
-                      Navigator.pop(context);  // Navigate back to Welcome Page
+                      Navigator.pop(context);
                     },
                   ),
                   SizedBox(height: 20),
@@ -80,7 +80,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextPassword = !_obscureTextPassword;  // Toggle password visibility
+                            _obscureTextPassword = !_obscureTextPassword;
                           });
                         },
                       ),
@@ -106,7 +106,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;  // Toggle confirm password visibility
+                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
                           });
                         },
                       ),

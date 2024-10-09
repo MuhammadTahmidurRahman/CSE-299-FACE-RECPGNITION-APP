@@ -14,7 +14,6 @@ class HomePage extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background image or gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -29,7 +28,7 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Current location display
+
                 Align(
                   alignment: Alignment.topCenter,
                   child: Text(
@@ -40,7 +39,7 @@ class HomePage extends StatelessWidget {
                 ),
                 SizedBox(height: 20),
 
-                // Toggle and code generator
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -63,7 +62,6 @@ class HomePage extends StatelessWidget {
                       IconButton(
                         icon: Icon(Icons.copy),
                         onPressed: () {
-                          // Copy code to clipboard logic
                         },
                       ),
                     ],
