@@ -1,27 +1,31 @@
+name: untitled
+description: "A new Flutter project."
+# publish_to: 'none'
 
-  name: untitled
-  description: "A new Flutter project."
-  #publish_to: 'none'
+version: 1.0.0+1
 
-  version: 1.0.0+1
+environment:
+  sdk: ^3.5.3
 
-  environment:
-    sdk: ^3.5.3
-
-  dependencies:
-    flutter:
-      sdk: flutter
-
-    cupertino_icons: ^1.0.8
-  dev_dependencies:
-    flutter_test:
-      sdk: flutter
-
-    flutter_lints: ^4.0.0
-
+dependencies:
   flutter:
-    uses-material-design: true
+    sdk: flutter
+  cupertino_icons: ^1.0.8                # Only one entry for cupertino_icons
+  firebase_core: ^2.16.0                  # Core package for Firebase
+  firebase_auth: ^4.16.0                  # For Firebase Authentication
+  cloud_firestore: ^4.7.0                 # For Cloud Firestore
+  firebase_storage: ^11.6.0                # For Firebase Storage
+  firebase_messaging: ^14.0.0              # For Firebase Messaging
+  firebase_crashlytics: ^3.5.0             # For Crashlytics (Optional)
 
-    assets:
-      - assets/splash_logo.jpg  # Update with the actual image file name
-      - assets/hpbg1.png  # Correct path
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/splash_logo.jpg  # Update with the actual image file name
+    - assets/hpbg1.png        # Correct path
