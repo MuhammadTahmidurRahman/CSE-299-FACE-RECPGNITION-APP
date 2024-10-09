@@ -1,24 +1,26 @@
 name: untitled
 description: "A new Flutter project."
+
+# Uncomment this line if you plan to publish to pub.dev
 # publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.3
+  sdk: ">=3.5.3 <4.0.0"  # Specify a range for better compatibility
 
 dependencies:
   flutter:
     sdk: flutter
   image_picker: ^0.8.7+3
   permission_handler: ^10.0.0
-  cupertino_icons: ^1.0.8                # Only one entry for cupertino_icons
-  firebase_core: ^2.16.0                  # Core package for Firebase
-  firebase_auth: ^4.16.0                  # For Firebase Authentication
-  cloud_firestore: ^4.7.0                 # For Cloud Firestore
-  firebase_storage: ^11.6.0                # For Firebase Storage
-  firebase_messaging: ^14.0.0              # For Firebase Messaging
-  firebase_crashlytics: ^3.5.0             # For Crashlytics (Optional)
+  cupertino_icons: ^1.0.8  # Only one entry for cupertino_icons
+  firebase_core: ^2.16.0   # Core package for Firebase
+  firebase_auth: ^4.16.0   # For Firebase Authentication
+  cloud_firestore: ^4.7.0   # For Cloud Firestore
+  firebase_storage: ^11.6.0  # For Firebase Storage
+  firebase_messaging: ^14.0.0  # For Firebase Messaging
+  firebase_crashlytics: ^3.5.0  # For Crashlytics (Optional)
 
 dev_dependencies:
   flutter_test:
