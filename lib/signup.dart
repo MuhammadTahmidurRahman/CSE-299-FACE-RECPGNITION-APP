@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Import image picker package
+import 'package:image_picker/image_picker.dart';
 import 'dart:io'; // For handling file paths
-import 'home.dart';  // Import the home page to navigate after signup
+import 'home_page.dart';  // Import the home page to navigate after signup
 
 class SignupPage extends StatefulWidget {
   @override
