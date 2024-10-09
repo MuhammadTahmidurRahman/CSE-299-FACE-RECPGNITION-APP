@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
+import 'package:image_picker/image_picker.dart'; // Import image picker package
+import 'dart:io'; // For handling file paths
+import 'home.dart';  // Import the home page to navigate after signup
 
 class SignupPage extends StatefulWidget {
   @override
@@ -9,6 +11,17 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   bool _obscureTextPassword = true;
   bool _obscureTextConfirmPassword = true;
+  File? _image; // File to store selected image
+
+  // Function to pick an image from gallery or camera
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +30,7 @@ class _SignupPageState extends State<SignupPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',
+            'assets/hpbg1.png',  // Background image, same as login
             fit: BoxFit.cover,
           ),
           SafeArea(
@@ -30,7 +43,7 @@ class _SignupPageState extends State<SignupPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context);  // Navigate back to Welcome Page
                     },
                   ),
                   SizedBox(height: 20),
@@ -80,7 +93,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextPassword = !_obscureTextPassword;
+                            _obscureTextPassword = !_obscureTextPassword;  // Toggle password visibility
                           });
                         },
                       ),
@@ -106,12 +119,35 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
+                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;  // Toggle confirm password visibility
                           });
                         },
                       ),
                     ),
                     style: TextStyle(color: Colors.white),
+                  ),
+                  SizedBox(height: 20),
+                  // Image upload field
+                  Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: ((builder) => bottomSheet()),  // Show bottom sheet for image options
+                        );
+                      },
+                      child: Container(
+                        height: 150,
+                        width: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: _image == null
+                            ? Icon(Icons.camera_alt, color: Colors.grey[800], size: 50)
+                            : Image.file(_image!, fit: BoxFit.cover),
+                      ),
+                    ),
                   ),
                   Spacer(),
                   // Signup Button
@@ -140,6 +176,51 @@ class _SignupPageState extends State<SignupPage> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Bottom sheet for selecting image source
+  Widget bottomSheet() {
+    return Container(
+      height: 100.0,
+      width: MediaQuery.of(context).size.width,
+      margin: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 20,
+      ),
+      child: Column(
+        children: <Widget>[
+          Text(
+            "Choose a photo",
+            style: TextStyle(
+              fontSize: 20.0,
+            ),
+          ),
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              TextButton.icon(
+                icon: Icon(Icons.photo_library),
+                onPressed: () {
+                  _pickImage(ImageSource.gallery);  // Select image from gallery
+                  Navigator.pop(context);  // Close the bottom sheet
+                },
+                label: Text("Gallery"),
+              ),
+              SizedBox(width: 20),
+              TextButton.icon(
+                icon: Icon(Icons.camera_alt),
+                onPressed: () {
+                  _pickImage(ImageSource.camera);  // Capture image from camera
+                  Navigator.pop(context);  // Close the bottom sheet
+                },
+                label: Text("Camera"),
+              ),
+            ],
           ),
         ],
       ),
