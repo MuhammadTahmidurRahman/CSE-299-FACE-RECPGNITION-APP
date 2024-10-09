@@ -4,8 +4,27 @@ description: "A new Flutter project."
 
 version: 1.0.0+1
 
+<<<<<<< HEAD
 environment:
   sdk: ^3.5.3
+=======
+  version: 1.0.0+1
+
+  environment:
+    sdk: ^3.5.3
+
+  dependencies:
+    flutter:
+      sdk: flutter
+    image_picker: ^0.8.7+3
+    cupertino_icons: ^1.0.8
+
+  dev_dependencies:
+    flutter_test:
+      sdk: flutter
+
+    flutter_lints: ^4.0.0
+>>>>>>> 9504ac4cf37c4a0d030643550a25889683f9d0fd
 
 dependencies:
   flutter:
