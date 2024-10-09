@@ -61,5 +61,9 @@ dependencies {
 
     // Optional: For Firebase Crashlytics
     implementation 'com.google.firebase:firebase-crashlytics'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version" // This should be in the build.gradle/ Add this line if not already there
+
 }
+apply plugin: 'kotlin-android'
+
 
