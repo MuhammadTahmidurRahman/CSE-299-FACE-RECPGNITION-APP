@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // For handling file paths
+import 'dart:io';
 import 'home_page.dart';  // Import the home page to navigate after signup
 
 class SignupPage extends StatefulWidget {
@@ -13,14 +13,47 @@ class _SignupPageState extends State<SignupPage> {
   bool _obscureTextConfirmPassword = true;
   File? _image; // File to store selected image
 
-  // Function to pick an image from gallery or camera
+  // Function to handle image selection from either camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
+    setState(() {
+      if (pickedFile != null) {
         _image = File(pickedFile.path);
-      });
-    }
+      }
+    });
+  }
+
+  // Function to show a dialog for choosing between Camera or Gallery
+  void _showImagePickerDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Choose Image Source"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);  // Pick image from camera
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);  // Pick image from gallery
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -30,7 +63,7 @@ class _SignupPageState extends State<SignupPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',  // Background image, same as login
+            'assets/hpbg1.png', // Background image, same as login
             fit: BoxFit.cover,
           ),
           SafeArea(
@@ -43,7 +76,7 @@ class _SignupPageState extends State<SignupPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () {
-                      Navigator.pop(context);  // Navigate back to Welcome Page
+                      Navigator.pop(context); // Navigate back to Welcome Page
                     },
                   ),
                   SizedBox(height: 20),
@@ -93,7 +126,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextPassword = !_obscureTextPassword;  // Toggle password visibility
+                            _obscureTextPassword = !_obscureTextPassword; // Toggle password visibility
                           });
                         },
                       ),
@@ -119,7 +152,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;  // Toggle confirm password visibility
+                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword; // Toggle confirm password visibility
                           });
                         },
                       ),
@@ -127,25 +160,25 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(color: Colors.white),
                   ),
                   SizedBox(height: 20),
-                  // Image upload field
-                  Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: ((builder) => bottomSheet()),  // Show bottom sheet for image options
-                        );
-                      },
-                      child: Container(
-                        height: 150,
-                        width: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: _image == null
-                            ? Icon(Icons.camera_alt, color: Colors.grey[800], size: 50)
-                            : Image.file(_image!, fit: BoxFit.cover),
+                  // Image upload button (styled like a TextField)
+                  GestureDetector(
+                    onTap: _showImagePickerDialog,  // Open dialog to choose Camera or Gallery
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                      child: Row(
+                        children: [
+                          Icon(Icons.camera_alt, color: Colors.white),  // Camera icon
+                          SizedBox(width: 10),
+                          Text(
+                            _image == null ? 'Upload Your Photo' : 'Photo Selected',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -176,51 +209,6 @@ class _SignupPageState extends State<SignupPage> {
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Bottom sheet for selecting image source
-  Widget bottomSheet() {
-    return Container(
-      height: 100.0,
-      width: MediaQuery.of(context).size.width,
-      margin: EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 20,
-      ),
-      child: Column(
-        children: <Widget>[
-          Text(
-            "Choose a photo",
-            style: TextStyle(
-              fontSize: 20.0,
-            ),
-          ),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              TextButton.icon(
-                icon: Icon(Icons.photo_library),
-                onPressed: () {
-                  _pickImage(ImageSource.gallery);  // Select image from gallery
-                  Navigator.pop(context);  // Close the bottom sheet
-                },
-                label: Text("Gallery"),
-              ),
-              SizedBox(width: 20),
-              TextButton.icon(
-                icon: Icon(Icons.camera_alt),
-                onPressed: () {
-                  _pickImage(ImageSource.camera);  // Capture image from camera
-                  Navigator.pop(context);  // Close the bottom sheet
-                },
-                label: Text("Camera"),
-              ),
-            ],
           ),
         ],
       ),
