@@ -15,7 +15,10 @@ class _SignupPageState extends State<SignupPage> {
 
   // Function to handle image selection from either camera or gallery
   Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source);
+    final pickedFile = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 50,  // Optional: Compress the image to 50% quality
+    );
     setState(() {
       if (pickedFile != null) {
         _image = File(pickedFile.path);
@@ -46,7 +49,7 @@ class _SignupPageState extends State<SignupPage> {
                 title: Text('Gallery'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);  // Pick image from gallery
+                  _pickImage(ImageSource.gallery);  // Pick image from gallery (photos only)
                 },
               ),
             ],
