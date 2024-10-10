@@ -104,7 +104,7 @@ class WelcomePage extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      "Create an Account",
+                      "Sign Up",
                       style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
