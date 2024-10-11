@@ -201,7 +201,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  Spacer(),
+                  SizedBox(height: 30),  // Add space before Sign Up button
                   ElevatedButton(
                     onPressed: () {
                       if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
@@ -223,6 +223,16 @@ class _SignupPageState extends State<SignupPage> {
                         'Sign Up',
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
+                    ),
+                  ),
+                  SizedBox(height: 20),  // Space between the two buttons
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);  // Navigate back to login or relevant page
+                    },
+                    child: Text(
+                      'Already have an account? Click here.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                 ],
