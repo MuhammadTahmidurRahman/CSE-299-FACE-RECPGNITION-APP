@@ -148,6 +148,7 @@ class _SignupPageState extends State<SignupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // Adjust layout for keyboard
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -156,88 +157,72 @@ class _SignupPageState extends State<SignupPage> {
             fit: BoxFit.cover,
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Create an Account',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+            child: SingleChildScrollView( // Allow scrolling when keyboard appears
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Please fill in the information below to create an account.',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  SizedBox(height: 40),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      labelStyle: TextStyle(color: Colors.white),
-                      filled: true,
-                      fillColor: Colors.black.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    SizedBox(height: 20),
+                    Text(
+                      'Create an Account',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscureTextPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: TextStyle(color: Colors.white),
-                      filled: true,
-                      fillColor: Colors.black.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureTextPassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white,
+                    SizedBox(height: 10),
+                    Text(
+                      'Please fill in the information below to create an account.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(height: 40),
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+<<<<<<< HEAD
+=======
                         onPressed: () {
                           setState(() {
                             _obscureTextPassword = !_obscureTextPassword; // Toggle password visibility
                           });
                         },
+>>>>>>> b8e098fd227fd316e61ef386a99f383973242997
                       ),
+                      style: TextStyle(color: Colors.white),
                     ),
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureTextConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      labelStyle: TextStyle(color: Colors.white),
-                      filled: true,
-                      fillColor: Colors.black.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureTextConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white,
+                    SizedBox(height: 20),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscureTextPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+<<<<<<< HEAD
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureTextPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.white,
+=======
                         onPressed: () {
                           setState(() {
                             _obscureTextConfirmPassword = !_obscureTextConfirmPassword; // Toggle confirm password visibility
@@ -264,10 +249,123 @@ class _SignupPageState extends State<SignupPage> {
                           Text(
                             _image == null ? 'Upload Your Photo' : 'Photo Selected',
                             style: TextStyle(color: Colors.white),
+>>>>>>> b8e098fd227fd316e61ef386a99f383973242997
                           ),
-                        ],
+                          onPressed: () {
+                            setState(() {
+                              _obscureTextPassword = !_obscureTextPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureTextConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm Password',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureTextConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: _showImagePickerDialog,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                        child: Row(
+                          children: [
+                            Icon(Icons.camera_alt, color: Colors.white),
+                            SizedBox(width: 10),
+                            Text(
+                              _image == null ? 'Upload Your Photo' : 'Photo Selected',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+<<<<<<< HEAD
+                    SizedBox(height: 30),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Validate fields
+                        if (_emailController.text.isEmpty ||
+                            _passwordController.text.isEmpty ||
+                            _confirmPasswordController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Please fill in all fields")),
+                          );
+                          return;
+                        }
+
+                        // Check if passwords match
+                        if (_passwordController.text != _confirmPasswordController.text) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Passwords do not match")),
+                          );
+                          return;
+                        }
+
+                        // Register user
+                        _registerUser();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: _isUploading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Center(
+                        child: Text(
+                          'Sign Up',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () {
+                        // Navigate to login page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => LoginPage()),
+                        );
+                      },
+                      child: Text(
+                        'Already have an account? Click here.',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+=======
                   ),
                   SizedBox(height: 30),
                   ElevatedButton(
@@ -324,6 +422,7 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                 ],
+>>>>>>> b8e098fd227fd316e61ef386a99f383973242997
               ),
             ),
           ),

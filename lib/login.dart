@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'forgot_password.dart';  // Forgot password page import
 import 'home.dart';  // Home page import
+import 'signup.dart';  // Import the signup page
 
 class LoginPage extends StatefulWidget {
   @override
@@ -181,6 +182,21 @@ class _LoginPageState extends State<LoginPage> {
                             'Log in',
                             style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Don't have an account? button
+                      TextButton(
+                        onPressed: () {
+                          // Navigate to signup page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => SignupPage()),
+                          );
+                        },
+                        child: Text(
+                          "Don't have an account? Click here.",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
                     ],
