@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart'; // For saving the QR code ima
 import 'dart:io'; // For File handling
 import 'dart:ui' as ui; // For capturing the QR image
 import 'package:pretty_qr_code/pretty_qr_code.dart'; // Import the pretty_qr_code package
+import 'join_event_page.dart'; // Join event page
 
 class HomePage extends StatefulWidget {
   @override
@@ -177,9 +178,12 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      // Bottom Navigation Bar
+      // Bottom Navigation Bar with changed gray-black background color
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.grey[900],  // Set the background color to gray-black
         currentIndex: 0,
+        selectedItemColor: Colors.white,     // Color of selected item
+        unselectedItemColor: Colors.white70, // Color of unselected items
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -200,6 +204,12 @@ class _HomePageState extends State<HomePage> {
         ],
         onTap: (index) {
           // Handle navigation between pages if necessary
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => JoinEventPage()), // Navigate to Join Event Page
+            );
+          }
         },
       ),
     );
