@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'home.dart';
+import 'package:image_picker/image_picker.dart'; // Required for picking images
+import 'dart:io'; // Required for handling file system
+import 'package:permission_handler/permission_handler.dart'; // Required for handling permissions
+import 'package:firebase_auth/firebase_auth.dart'; // Required for Firebase authentication
+import 'package:firebase_storage/firebase_storage.dart'; // Required for Firebase storage
+import 'login.dart';  // Import the login page
+import 'home.dart';   // Import the home page
 
 class SignupPage extends StatefulWidget {
   @override
@@ -18,8 +19,9 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isUploading = false; // To track the upload status
+  bool _isUploading = false; // To track upload status
 
+  // Request camera permission
   Future<void> _requestCameraPermission() async {
     PermissionStatus status = await Permission.camera.request();
     if (status.isGranted) {
@@ -32,6 +34,7 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  // Pick image either from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     if (source == ImageSource.camera) {
       await _requestCameraPermission();
@@ -41,13 +44,44 @@ class _SignupPageState extends State<SignupPage> {
       source: source,
       imageQuality: 50,
     );
-    if (pickedFile != null) {
-      setState(() {
+    setState(() {
+      if (pickedFile != null) {
         _image = File(pickedFile.path);
-      });
-    }
+      }
+    });
   }
 
+  // Method to show the image picker dialog
+  Future<void> _showImagePickerDialog() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera),
+              title: Text('Take a photo'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library),
+              title: Text('Choose from gallery'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Method to upload image to Firebase Storage
   Future<void> _uploadImageToFirebase(File image) async {
     if (image == null) {
       print("No image selected");
@@ -80,6 +114,7 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  // Method to register user with Firebase
   Future<void> _registerUser() async {
     if (_passwordController.text.trim().length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -108,38 +143,6 @@ class _SignupPageState extends State<SignupPage> {
       print("Registration failed: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to register: $e")));
     }
-  }
-
-  void _showImagePickerDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Choose Image Source"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Camera'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -211,7 +214,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextPassword = !_obscureTextPassword;
+                            _obscureTextPassword = !_obscureTextPassword; // Toggle password visibility
                           });
                         },
                       ),
@@ -237,7 +240,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
+                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword; // Toggle confirm password visibility
                           });
                         },
                       ),
@@ -266,32 +269,15 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  Spacer(),
+                  SizedBox(height: 30),
                   ElevatedButton(
-                    onPressed: () async {
-                      // Validate the form
+                    onPressed: () {
+                      // Validate fields
                       if (_emailController.text.isEmpty ||
                           _passwordController.text.isEmpty ||
                           _confirmPasswordController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Please fill in all fields")),
-                        );
-                        return;
-                      }
-
-                      // Validate email format (simple regex)
-                      final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                      if (!emailRegex.hasMatch(_emailController.text)) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Please enter a valid email address")),
-                        );
-                        return;
-                      }
-
-                      // Check if the password is at least 6 characters long
-                      if (_passwordController.text.trim().length < 6) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Password must be at least 6 characters long")),
                         );
                         return;
                       }
@@ -305,14 +291,37 @@ class _SignupPageState extends State<SignupPage> {
                       }
 
                       // Register user
-                      await _registerUser();
+                      _registerUser();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                     child: _isUploading
                         ? CircularProgressIndicator(color: Colors.white) // Show loading indicator
-                        : Text("Sign Up"),
+                        : Center(
+                      child: Text(
+                        'Sign Up',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      // Navigate to login page when "Already have an account" is clicked
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginPage()),
+                      );
+                    },
+                    child: Text(
+                      'Already have an account? Click here.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
                   ),
                 ],
               ),
