@@ -18,6 +18,7 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isUploading = false; // To track the upload status
 
   Future<void> _requestCameraPermission() async {
     PermissionStatus status = await Permission.camera.request();
@@ -38,13 +39,13 @@ class _SignupPageState extends State<SignupPage> {
 
     final pickedFile = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 50,  // Optional: Compress the image to 50% quality
+      imageQuality: 50,
     );
-    setState(() {
-      if (pickedFile != null) {
+    if (pickedFile != null) {
+      setState(() {
         _image = File(pickedFile.path);
-      }
-    });
+      });
+    }
   }
 
   Future<void> _uploadImageToFirebase(File image) async {
@@ -57,25 +58,29 @@ class _SignupPageState extends State<SignupPage> {
     Reference firebaseStorageRef = FirebaseStorage.instance.ref().child('uploads/$fileName');
 
     try {
-      print("Starting upload...");
+      setState(() {
+        _isUploading = true; // Start uploading
+      });
       UploadTask uploadTask = firebaseStorageRef.putFile(image);
 
-      // Add a listener to track the upload progress and completion
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         print('Upload progress: ${(snapshot.bytesTransferred / snapshot.totalBytes) * 100} %');
       });
 
       TaskSnapshot taskSnapshot = await uploadTask;
-      print("Upload complete: ${taskSnapshot.ref.fullPath}"); // Debug print to confirm upload
+      print("Upload complete: ${taskSnapshot.ref.fullPath}");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image uploaded successfully!")));
     } catch (e) {
-      print("Upload failed: $e"); // Print error message
+      print("Upload failed: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to upload image: $e")));
+    } finally {
+      setState(() {
+        _isUploading = false; // Finish uploading
+      });
     }
   }
 
   Future<void> _registerUser() async {
-    // Check if the password is at least 6 characters long
     if (_passwordController.text.trim().length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Password must be at least 6 characters long")),
@@ -100,7 +105,7 @@ class _SignupPageState extends State<SignupPage> {
         MaterialPageRoute(builder: (context) => HomePage()),
       );
     } catch (e) {
-      print("Registration failed: $e"); // Print error message
+      print("Registration failed: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to register: $e")));
     }
   }
@@ -305,7 +310,9 @@ class _SignupPageState extends State<SignupPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                     ),
-                    child: Text("Sign Up"),
+                    child: _isUploading
+                        ? CircularProgressIndicator(color: Colors.white) // Show loading indicator
+                        : Text("Sign Up"),
                   ),
                 ],
               ),
