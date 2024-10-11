@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  qr_flutter: ^4.0.0  # Add the QR code package
+  pretty_qr_code: ^3.0.0 # Add the QR code package
   path_provider: ^2.0.2  # Add the path provider package
   image_picker: ^0.8.7+4
   permission_handler: ^10.2.0
