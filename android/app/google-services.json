@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "970917713667",
-    "project_id": "pict-ora-on-fire",
-    "storage_bucket": "pict-ora-on-fire.appspot.com"
+    "project_number": "155732133141",
+    "project_id": "pictora-7f0ad",
+    "storage_bucket": "pictora-7f0ad.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:970917713667:android:cb8a8c89d093042ac63b36",
+        "mobilesdk_app_id": "1:155732133141:android:35363a99691182f26dd51c",
         "android_client_info": {
           "package_name": "com.example.pictora"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAyZT2Jmt-92hBuv9Ie1M8lF3-vbfWwZSs"
+          "current_key": "AIzaSyBxZncK_wu0SeXVkdG5XKnzk5TJAzN4bD0"
         }
       ],
       "services": {

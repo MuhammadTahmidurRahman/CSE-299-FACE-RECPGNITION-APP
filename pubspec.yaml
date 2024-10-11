@@ -12,11 +12,12 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  qr_flutter: ^4.0.0  # QR code package
-  path_provider: ^2.0.15  # Updated path provider package
-  image_picker: ^0.8.7+4  # Image picker package
-
-  permission_handler: ^10.2.0  # Permission handler package
+  qr_flutter: ^4.0.0  # Add the QR code package
+  path_provider: ^2.0.2  # Add the path provider package
+  image_picker: ^0.8.7+4
+  permission_handler: ^10.2.0
+  firebase_auth: ^5.3.1
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:
