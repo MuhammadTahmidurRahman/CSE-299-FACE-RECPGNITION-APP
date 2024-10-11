@@ -1,7 +1,6 @@
-
-name: untitled
+name: app299
 description: "A new Flutter project."
-#publish_to: 'none'
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -11,9 +10,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  qr_flutter: ^4.0.0  # Add the QR code package
+  path_provider: ^2.0.2  # Add the path provider package
   image_picker: ^0.8.7+4
   permission_handler: ^10.2.0
-
+<<<<<<< HEAD
+device.preview: 1.2.0
+=======
+>>>>>>> d3b29223f88030b5c5978016a61861bf1bb11011
 
 dev_dependencies:
   flutter_test:
@@ -25,5 +31,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/splash_logo.jpg  # Update with the actual image file name
-    - assets/hpbg1.png  # Correct path
+    - assets/splash_logo.jpg
+    - assets/hpbg1.png
