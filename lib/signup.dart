@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Required for picking images
-import 'dart:io'; // Required for handling file system
-import 'package:permission_handler/permission_handler.dart'; // Required for handling permissions
-import 'login.dart';  // Import the login page
-import 'home.dart';   // Import the home page
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -18,7 +19,6 @@ class _SignupPageState extends State<SignupPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // Request camera permission
   Future<void> _requestCameraPermission() async {
     PermissionStatus status = await Permission.camera.request();
     if (status.isGranted) {
@@ -31,7 +31,6 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  // Pick image either from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     if (source == ImageSource.camera) {
       await _requestCameraPermission();
@@ -39,7 +38,7 @@ class _SignupPageState extends State<SignupPage> {
 
     final pickedFile = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 50,
+      imageQuality: 50,  // Optional: Compress the image to 50% quality
     );
     setState(() {
       if (pickedFile != null) {
@@ -48,31 +47,91 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  // Method to show the image picker dialog
-  Future<void> _showImagePickerDialog() async {
-    showModalBottomSheet(
+  Future<void> _uploadImageToFirebase(File image) async {
+    if (image == null) {
+      print("No image selected");
+      return; // Exit if no image is selected
+    }
+
+    String fileName = DateTime.now().millisecondsSinceEpoch.toString();
+    Reference firebaseStorageRef = FirebaseStorage.instance.ref().child('uploads/$fileName');
+
+    try {
+      print("Starting upload...");
+      UploadTask uploadTask = firebaseStorageRef.putFile(image);
+
+      // Add a listener to track the upload progress and completion
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        print('Upload progress: ${(snapshot.bytesTransferred / snapshot.totalBytes) * 100} %');
+      });
+
+      TaskSnapshot taskSnapshot = await uploadTask;
+      print("Upload complete: ${taskSnapshot.ref.fullPath}"); // Debug print to confirm upload
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image uploaded successfully!")));
+    } catch (e) {
+      print("Upload failed: $e"); // Print error message
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to upload image: $e")));
+    }
+  }
+
+  Future<void> _registerUser() async {
+    // Check if the password is at least 6 characters long
+    if (_passwordController.text.trim().length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Password must be at least 6 characters long")),
+      );
+      return; // Exit if the password is too short
+    }
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // If the user is successfully created, upload the image
+      if (_image != null) {
+        await _uploadImageToFirebase(_image!);
+      }
+
+      // Navigate to the home page
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+    } catch (e) {
+      print("Registration failed: $e"); // Print error message
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to register: $e")));
+    }
+  }
+
+  void _showImagePickerDialog() {
+    showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera),
-              title: Text('Take a photo'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library),
-              title: Text('Choose from gallery'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
+        return AlertDialog(
+          title: Text("Choose Image Source"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -147,7 +206,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextPassword = !_obscureTextPassword; // Toggle password visibility
+                            _obscureTextPassword = !_obscureTextPassword;
                           });
                         },
                       ),
@@ -173,7 +232,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword; // Toggle confirm password visibility
+                            _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
                           });
                         },
                       ),
@@ -202,43 +261,51 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 30),
+                  Spacer(),
                   ElevatedButton(
-                    onPressed: () {
-                      if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
+                    onPressed: () async {
+                      // Validate the form
+                      if (_emailController.text.isEmpty ||
+                          _passwordController.text.isEmpty ||
+                          _confirmPasswordController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Please fill in all fields")),
                         );
+                        return;
                       }
+
+                      // Validate email format (simple regex)
+                      final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                      if (!emailRegex.hasMatch(_emailController.text)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Please enter a valid email address")),
+                        );
+                        return;
+                      }
+
+                      // Check if the password is at least 6 characters long
+                      if (_passwordController.text.trim().length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Password must be at least 6 characters long")),
+                        );
+                        return;
+                      }
+
+                      // Check if passwords match
+                      if (_passwordController.text != _confirmPasswordController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Passwords do not match")),
+                        );
+                        return;
+                      }
+
+                      // Register user
+                      await _registerUser();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                      backgroundColor: Colors.blue,
                     ),
-                    child: Center(
-                      child: Text(
-                        'Sign Up',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      // Navigate to login page when "Already have an account" is clicked
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => LoginPage()),
-                      );
-                    },
-                    child: Text(
-                      'Already have an account? Click here.',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+                    child: Text("Sign Up"),
                   ),
                 ],
               ),
