@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';  // Add this line for permission handling
 import 'home.dart';  // Import the home page to navigate after signup
 
 class SignupPage extends StatefulWidget {
@@ -12,9 +13,27 @@ class _SignupPageState extends State<SignupPage> {
   bool _obscureTextPassword = true;
   bool _obscureTextConfirmPassword = true;
   File? _image; // File to store selected image
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  // Function to handle image selection from either camera or gallery
+  Future<void> _requestCameraPermission() async {
+    PermissionStatus status = await Permission.camera.request();
+    if (status.isGranted) {
+      print("Camera permission granted");
+    } else {
+      print("Camera permission denied");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Camera permission is required to use this feature")),
+      );
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
+    if (source == ImageSource.camera) {
+      await _requestCameraPermission();
+    }
+
     final pickedFile = await ImagePicker().pickImage(
       source: source,
       imageQuality: 50,  // Optional: Compress the image to 50% quality
@@ -26,7 +45,6 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  // Function to show a dialog for choosing between Camera or Gallery
   void _showImagePickerDialog() {
     showDialog(
       context: context,
@@ -41,7 +59,7 @@ class _SignupPageState extends State<SignupPage> {
                 title: Text('Camera'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.camera);  // Pick image from camera
+                  _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
@@ -49,7 +67,7 @@ class _SignupPageState extends State<SignupPage> {
                 title: Text('Gallery'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);  // Pick image from gallery (photos only)
+                  _pickImage(ImageSource.gallery);
                 },
               ),
             ],
@@ -66,7 +84,7 @@ class _SignupPageState extends State<SignupPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png', // Background image, same as login
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
           SafeArea(
@@ -75,11 +93,10 @@ class _SignupPageState extends State<SignupPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Back arrow icon
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () {
-                      Navigator.pop(context); // Navigate back to Welcome Page
+                      Navigator.pop(context);
                     },
                   ),
                   SizedBox(height: 20),
@@ -97,8 +114,8 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   SizedBox(height: 40),
-                  // Email field
                   TextField(
+                    controller: _emailController,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: TextStyle(color: Colors.white),
@@ -111,8 +128,8 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(color: Colors.white),
                   ),
                   SizedBox(height: 20),
-                  // Password field
                   TextField(
+                    controller: _passwordController,
                     obscureText: _obscureTextPassword,
                     decoration: InputDecoration(
                       labelText: 'Password',
@@ -137,8 +154,8 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(color: Colors.white),
                   ),
                   SizedBox(height: 20),
-                  // Confirm password field
                   TextField(
+                    controller: _confirmPasswordController,
                     obscureText: _obscureTextConfirmPassword,
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',
@@ -163,7 +180,6 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(color: Colors.white),
                   ),
                   SizedBox(height: 20),
-                  // Image upload button (styled like a TextField)
                   GestureDetector(
                     onTap: _showImagePickerDialog,  // Open dialog to choose Camera or Gallery
                     child: Container(
@@ -186,14 +202,14 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                   Spacer(),
-                  // Signup Button
                   ElevatedButton(
                     onPressed: () {
-                      // Navigate to home page after signup
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => HomePage()),
-                      );
+                      if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => HomePage()),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
