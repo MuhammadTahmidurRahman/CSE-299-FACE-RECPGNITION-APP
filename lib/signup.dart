@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:permission_handler/permission_handler.dart';  // Add this line for permission handling
-import 'home.dart';  // Import the home page to navigate after signup
+import 'package:image_picker/image_picker.dart'; // Required for picking images
+import 'dart:io'; // Required for handling file system
+import 'package:permission_handler/permission_handler.dart'; // Required for handling permissions
+import 'login.dart';  // Import the login page
+import 'home.dart';   // Import the home page
 
 class SignupPage extends StatefulWidget {
   @override
@@ -17,6 +18,7 @@ class _SignupPageState extends State<SignupPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  // Request camera permission
   Future<void> _requestCameraPermission() async {
     PermissionStatus status = await Permission.camera.request();
     if (status.isGranted) {
@@ -29,6 +31,7 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  // Pick image either from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     if (source == ImageSource.camera) {
       await _requestCameraPermission();
@@ -36,7 +39,7 @@ class _SignupPageState extends State<SignupPage> {
 
     final pickedFile = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 50,  // Optional: Compress the image to 50% quality
+      imageQuality: 50,
     );
     setState(() {
       if (pickedFile != null) {
@@ -45,33 +48,31 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  void _showImagePickerDialog() {
-    showDialog(
+  // Method to show the image picker dialog
+  Future<void> _showImagePickerDialog() async {
+    showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Choose Image Source"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Camera'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera),
+              title: Text('Take a photo'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library),
+              title: Text('Choose from gallery'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
         );
       },
     );
@@ -181,7 +182,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 20),
                   GestureDetector(
-                    onTap: _showImagePickerDialog,  // Open dialog to choose Camera or Gallery
+                    onTap: _showImagePickerDialog,
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.3),
@@ -191,7 +192,7 @@ class _SignupPageState extends State<SignupPage> {
                       padding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                       child: Row(
                         children: [
-                          Icon(Icons.camera_alt, color: Colors.white),  // Camera icon
+                          Icon(Icons.camera_alt, color: Colors.white),
                           SizedBox(width: 10),
                           Text(
                             _image == null ? 'Upload Your Photo' : 'Photo Selected',
@@ -201,7 +202,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 30),  // Add space before Sign Up button
+                  SizedBox(height: 30),
                   ElevatedButton(
                     onPressed: () {
                       if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
@@ -225,10 +226,14 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20),  // Space between the two buttons
+                  SizedBox(height: 20),
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(context);  // Navigate back to login or relevant page
+                      // Navigate to login page when "Already have an account" is clicked
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginPage()),
+                      );
                     },
                     child: Text(
                       'Already have an account? Click here.',
