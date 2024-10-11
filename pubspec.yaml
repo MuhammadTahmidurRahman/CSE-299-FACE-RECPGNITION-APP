@@ -1,4 +1,4 @@
-name: app299
+name: pictora
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -16,6 +16,8 @@ dependencies:
   path_provider: ^2.0.2  # Add the path provider package
   image_picker: ^0.8.7+4
   permission_handler: ^10.2.0
+  firebase_auth: ^5.3.1
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:
