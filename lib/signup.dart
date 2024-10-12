@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login.dart';
-import 'createorjoinroom.dart';
+import 'home.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -88,12 +88,17 @@ class _SignupPageState extends State<SignupPage> {
   Future<String?> _uploadImageToFirebase(File? image) async {
     if (image == null) {
       print("No image selected");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please select an image first.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please select an image first.")));
       return null;
     }
 
-    String fileName = DateTime.now().millisecondsSinceEpoch.toString();
-    Reference firebaseStorageRef = FirebaseStorage.instance.ref().child('uploads/$fileName');
+    String fileName = DateTime
+        .now()
+        .millisecondsSinceEpoch
+        .toString();
+    Reference firebaseStorageRef = FirebaseStorage.instance.ref().child(
+        'uploads/$fileName');
 
     try {
       setState(() {
@@ -102,17 +107,20 @@ class _SignupPageState extends State<SignupPage> {
       UploadTask uploadTask = firebaseStorageRef.putFile(image);
 
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        print('Upload progress: ${(snapshot.bytesTransferred / snapshot.totalBytes) * 100} %');
+        print('Upload progress: ${(snapshot.bytesTransferred /
+            snapshot.totalBytes) * 100} %');
       });
 
       TaskSnapshot taskSnapshot = await uploadTask;
       String downloadUrl = await taskSnapshot.ref.getDownloadURL();
       print("Image uploaded. URL: $downloadUrl");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image uploaded successfully!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Image uploaded successfully!")));
       return downloadUrl;
     } catch (e) {
       print("Upload failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to upload image: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to upload image: ${e.toString()}")));
       return null;
     } finally {
       setState(() {
@@ -123,7 +131,9 @@ class _SignupPageState extends State<SignupPage> {
 
   // Register user with Firebase (Email/Password)
   Future<void> _registerUser() async {
-    if (_passwordController.text.trim().length < 6) {
+    if (_passwordController.text
+        .trim()
+        .length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Password must be at least 6 characters long")),
       );
@@ -131,7 +141,8 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -142,11 +153,12 @@ class _SignupPageState extends State<SignupPage> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+        MaterialPageRoute(builder: (context) => HomePage()),
       );
     } catch (e) {
       print("Registration failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to register: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to register: ${e.toString()}")));
     }
   }
 
@@ -154,7 +166,8 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _signInWithGoogle() async {
     if (_image == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please upload an image before signing up with Google")),
+        SnackBar(content: Text(
+            "Please upload an image before signing up with Google")),
       );
       return;
     }
@@ -163,14 +176,16 @@ class _SignupPageState extends State<SignupPage> {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser != null) {
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInAuthentication googleAuth = await googleUser
+            .authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        UserCredential userCredential = await FirebaseAuth.instance
+            .signInWithCredential(credential);
 
         // Upload the image after Google Sign-In
         String? imageUrl = await _uploadImageToFirebase(_image!);
@@ -182,7 +197,7 @@ class _SignupPageState extends State<SignupPage> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -191,7 +206,8 @@ class _SignupPageState extends State<SignupPage> {
       }
     } catch (e) {
       print("Google Sign-In failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to sign in with Google: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Failed to sign in with Google: ${e.toString()}")));
     }
   }
 
@@ -331,31 +347,19 @@ class _SignupPageState extends State<SignupPage> {
                       onPressed: _registerUser,
                       child: _isUploading
                           ? CircularProgressIndicator(color: Colors.white)
-<<<<<<< Updated upstream
-                          : Text('Sign Up', style: TextStyle(color: Colors.white)), // Set text color to white
-=======
                           : Text('Sign Up', style: TextStyle(color: Colors.white)), // Text color set to white
->>>>>>> Stashed changes
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black, // Button background color set to black
                         minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        backgroundColor: Colors.black, // Set button background color to black
                       ),
                     ),
-
                     SizedBox(height: 20),
-
                     ElevatedButton.icon(
-<<<<<<< Updated upstream
-                      icon: Icon(Icons.login, color: Colors.white), // Set icon color to white
-                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Set text color to white
-=======
                       icon: Icon(Icons.login, color: Colors.white), // Icon color set to white
                       label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Text color set to white
->>>>>>> Stashed changes
                       onPressed: _signInWithGoogle,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black, // Button background color set to black
@@ -363,10 +367,8 @@ class _SignupPageState extends State<SignupPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        backgroundColor: Colors.black, // Set button background color to black
                       ),
                     ),
-
                     SizedBox(height: 20),
                     TextButton(
                       onPressed: () {
