@@ -133,7 +133,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 20),
                     // Google Sign-In Button
-// Google Sign-In Button
                     ElevatedButton.icon(
                       onPressed: _loginWithGoogle,
                       icon: Icon(Icons.login, color: Colors.white), // Set icon color to white
@@ -150,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-
                   ],
                 ),
               ),
@@ -161,6 +159,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // Login with email and password
   Future<void> _loginWithEmailPassword() async {
     try {
       final User? user = (await _auth.signInWithEmailAndPassword(
@@ -173,9 +172,11 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       print('Error: $e');
+      // Show error dialog if needed
     }
   }
 
+  // Login with Google
   Future<void> _loginWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -183,49 +184,39 @@ class _LoginPageState extends State<LoginPage> {
         return; // The user canceled the sign-in
       }
 
-      // Get the email of the Google user
-      final String? email = googleUser.email;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Check if this email already exists in Firebase Authentication
-      final List<String> signInMethods = await _auth.fetchSignInMethodsForEmail(email!);
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-      // If the user is already registered, allow sign-in
-      if (signInMethods.isNotEmpty) {
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
+      final User? user = (await _auth.signInWithCredential(credential)).user;
 
-        final User? user = (await _auth.signInWithCredential(credential)).user;
-
-        if (user != null) {
-          _checkIfUserExists(user); // Check if user is new
-        }
-      } else {
-        // User is not registered, show error and don't sign them in
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Error'),
-            content: Text('You are not registered. Sign up first.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  Navigator.pop(context); // Redirect to the previous page
-                },
-                child: Text('OK'),
-              ),
-            ],
-          ),
-        );
+      if (user != null) {
+        _checkIfUserExists(user); // Check if the user is new or existing
       }
     } catch (e) {
       print('Google Sign-In Error: $e');
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Something went wrong during Google Sign-In. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
+  // Check if the user exists (if the user is new or existing)
   void _checkIfUserExists(User user) async {
     if (user.metadata.creationTime != user.metadata.lastSignInTime) {
       // Existing user, proceed to HomePage
