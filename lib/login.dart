@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'forgot_password.dart'; // Forgot password page import
-import 'home.dart'; // Home page import
+import 'createorjoinroom.dart'; // Home page import
 
 class LoginPage extends StatefulWidget {
   @override
@@ -133,18 +133,24 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 20),
                     // Google Sign-In Button
+// Google Sign-In Button
                     ElevatedButton.icon(
                       onPressed: _loginWithGoogle,
-                      icon: Icon(Icons.login),
-                      label: Text("Sign in with Google"),
+                      icon: Icon(Icons.login, color: Colors.white), // Set icon color to white
+                      label: Text(
+                        "Sign in with Google",
+                        style: TextStyle(color: Colors.white), // Set text color to white
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent, // Google brand color
-                        padding: EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: Colors.black, // Set button background color to black
+                        padding: EdgeInsets.symmetric(vertical: 15), // Same padding as the "Log in" button
+                        minimumSize: Size(double.infinity, 50), // Make the button fill the width like the "Log in" button
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20), // Same border radius as the "Log in" button
                         ),
                       ),
                     ),
+
                   ],
                 ),
               ),
@@ -225,7 +231,7 @@ class _LoginPageState extends State<LoginPage> {
       // Existing user, proceed to HomePage
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
       );
     } else {
       // User is new, prevent account from being saved and sign them out
@@ -249,5 +255,3 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 }
-
-]\zWERTYUIOP[]\J'WER\'
