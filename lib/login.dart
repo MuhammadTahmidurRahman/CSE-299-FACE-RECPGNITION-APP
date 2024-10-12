@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'forgot_password.dart';  // Forgot password page import
-import 'home.dart';  // Home page import
-import 'signup.dart';  // Import the signup page
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'forgot_password.dart'; // Forgot password page import
+import 'home.dart'; // Home page import
 
 class LoginPage extends StatefulWidget {
   @override
@@ -10,27 +11,10 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();  // Key for form validation
-  String? _errorMessage;
-
-  // Mock authentication method (Replace with actual implementation)
-  Future<bool> _authenticateUser(String email, String password) async {
-    // Simulate a call to the backend to check the credentials
-    if (email == "test@example.com" && password == "password123") {
-      return true;  // Credentials match
-    } else if (email != "test@example.com") {
-      setState(() {
-        _errorMessage = "User does not exist. Please check your email.";
-      });
-    } else {
-      setState(() {
-        _errorMessage = "Incorrect password. Please try again.";
-      });
-    }
-    return false;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,168 +23,129 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',  // Background image for the login page
+            'assets/hpbg1.png', // Background image for the login page
             fit: BoxFit.cover,
           ),
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Form(
-                  key: _formKey,  // Wrap the form with a validation key
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Back arrow icon
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          Navigator.pop(context);  // Navigate back to Welcome Page
-                        },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Back arrow icon
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context); // Navigate back to Welcome Page
+                      },
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Log in to PicTora',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Log in to PicTora',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Enter the email you have registered with.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(height: 40),
+                    // Email field
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Enter the email you have registered with.',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                      SizedBox(height: 40),
-                      // Email field
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          labelStyle: TextStyle(color: Colors.white),
-                          filled: true,
-                          fillColor: Colors.black.withOpacity(0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+                    // Password field
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscureText,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        style: TextStyle(color: Colors.white),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      // Password field
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscureText,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          labelStyle: TextStyle(color: Colors.white),
-                          filled: true,
-                          fillColor: Colors.black.withOpacity(0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureText ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.white,
                           ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureText ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureText = !_obscureText;  // Toggle password visibility
-                              });
-                            },
-                          ),
-                        ),
-                        style: TextStyle(color: Colors.white),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
                           onPressed: () {
-                            // Navigate to Forgot Password page
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
-                            );
+                            setState(() {
+                              _obscureText = !_obscureText; // Toggle password visibility
+                            });
                           },
-                          child: Text(
-                            'Forgot Password?',
-                            style: TextStyle(color: Colors.white),
-                          ),
                         ),
                       ),
-                      SizedBox(height: 20),
-                      if (_errorMessage != null)  // Display error message if any
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10.0),
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red, fontSize: 14),
-                          ),
-                        ),
-                      // Log in Button
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            // Validate email and password fields
-                            bool isAuthenticated = await _authenticateUser(
-                              _emailController.text,
-                              _passwordController.text,
-                            );
-                            if (isAuthenticated) {
-                              // Navigate to home page if authentication is successful
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => HomePage()),
-                              );
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          padding: EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Log in',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      // Don't have an account? button
-                      TextButton(
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
                         onPressed: () {
-                          // Navigate to signup page
+                          // Navigate to Forgot Password page
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => SignupPage()),
+                            MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
                           );
                         },
                         child: Text(
-                          "Don't have an account? Click here.",
+                          'Forgot Password?',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    // Log in Button
+                    ElevatedButton(
+                      onPressed: _loginWithEmailPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Log in',
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 20),
+                    // Google Sign-In Button
+                    ElevatedButton.icon(
+                      onPressed: _loginWithGoogle,
+                      icon: Icon(Icons.login),
+                      label: Text("Sign in with Google"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent, // Google brand color
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -209,4 +154,100 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
+  Future<void> _loginWithEmailPassword() async {
+    try {
+      final User? user = (await _auth.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      )).user;
+
+      if (user != null) {
+        _checkIfUserExists(user); // Check if user is new
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return; // The user canceled the sign-in
+      }
+
+      // Get the email of the Google user
+      final String? email = googleUser.email;
+
+      // Check if this email already exists in Firebase Authentication
+      final List<String> signInMethods = await _auth.fetchSignInMethodsForEmail(email!);
+
+      // If the user is already registered, allow sign-in
+      if (signInMethods.isNotEmpty) {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final User? user = (await _auth.signInWithCredential(credential)).user;
+
+        if (user != null) {
+          _checkIfUserExists(user); // Check if user is new
+        }
+      } else {
+        // User is not registered, show error and don't sign them in
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text('You are not registered. Sign up first.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  Navigator.pop(context); // Redirect to the previous page
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('Google Sign-In Error: $e');
+    }
+  }
+
+  void _checkIfUserExists(User user) async {
+    if (user.metadata.creationTime != user.metadata.lastSignInTime) {
+      // Existing user, proceed to HomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+    } else {
+      // User is new, prevent account from being saved and sign them out
+      await _auth.signOut();
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('You are not registered. Sign up first.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context); // Redirect to the previous page
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 }
+
+]\zWERTYUIOP[]\J'WER\'
