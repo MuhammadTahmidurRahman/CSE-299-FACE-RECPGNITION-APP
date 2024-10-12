@@ -21,6 +21,7 @@ dependencies:
   firebase_storage: ^12.3.3
   pretty_qr_code: ^3.0.0
   firebase_database: ^11.0.5
+  mobile_scanner: ^5.1.1
 
 dev_dependencies:
   flutter_test:
