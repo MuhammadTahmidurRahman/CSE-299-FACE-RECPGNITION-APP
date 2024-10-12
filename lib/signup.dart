@@ -5,8 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pictora/createorjoinroom.dart';
 import 'login.dart';
-import 'home.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -153,7 +153,7 @@ class _SignupPageState extends State<SignupPage> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
       );
     } catch (e) {
       print("Registration failed: $e");
@@ -197,7 +197,7 @@ class _SignupPageState extends State<SignupPage> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
