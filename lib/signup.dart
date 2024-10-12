@@ -306,25 +306,24 @@ class _SignupPageState extends State<SignupPage> {
                     SizedBox(height: 20),
                     GestureDetector(
                       onTap: _showImagePickerDialog,
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: _image != null
-                                ? FileImage(_image!)
-                                : null,
-                            child: _image == null
-                                ? Icon(
-                                Icons.camera_alt, size: 50, color: Colors.grey)
-                                : null,
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Upload a profile picture',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ],
+                      child: Container(
+                        width: double.infinity,
+                        height: 60, // Same height as email and password fields
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3), // Same background color
+                          borderRadius: BorderRadius.circular(10), // Rounded corners
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.camera_alt, color: Colors.white), // Camera icon
+                            SizedBox(width: 15), // Space between icon and text
+                            Text(
+                              _image == null ? 'Upload your photo here' : 'Photo selected',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -332,8 +331,13 @@ class _SignupPageState extends State<SignupPage> {
                       onPressed: _registerUser,
                       child: _isUploading
                           ? CircularProgressIndicator(color: Colors.white)
+<<<<<<< Updated upstream
                           : Text('Sign Up', style: TextStyle(color: Colors.white)), // Set text color to white
+=======
+                          : Text('Sign Up', style: TextStyle(color: Colors.white)), // Text color set to white
+>>>>>>> Stashed changes
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black, // Button background color set to black
                         minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -345,10 +349,16 @@ class _SignupPageState extends State<SignupPage> {
                     SizedBox(height: 20),
 
                     ElevatedButton.icon(
+<<<<<<< Updated upstream
                       icon: Icon(Icons.login, color: Colors.white), // Set icon color to white
                       label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Set text color to white
+=======
+                      icon: Icon(Icons.login, color: Colors.white), // Icon color set to white
+                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Text color set to white
+>>>>>>> Stashed changes
                       onPressed: _signInWithGoogle,
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black, // Button background color set to black
                         minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -356,6 +366,7 @@ class _SignupPageState extends State<SignupPage> {
                         backgroundColor: Colors.black, // Set button background color to black
                       ),
                     ),
+
                     SizedBox(height: 20),
                     TextButton(
                       onPressed: () {
