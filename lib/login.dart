@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'forgot_password.dart'; // Forgot password page import
 import 'createorjoinroom.dart'; // Home page import
+import 'signup.dart'; // Import the registration page
 
 class LoginPage extends StatefulWidget {
   @override
@@ -135,17 +136,35 @@ class _LoginPageState extends State<LoginPage> {
                     // Google Sign-In Button
                     ElevatedButton.icon(
                       onPressed: _loginWithGoogle,
-                      icon: Icon(Icons.login, color: Colors.white), // Set icon color to white
+                      icon: Icon(Icons.login, color: Colors.white),
                       label: Text(
                         "Sign in with Google",
-                        style: TextStyle(color: Colors.white), // Set text color to white
+                        style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black, // Set button background color to black
-                        padding: EdgeInsets.symmetric(vertical: 15), // Same padding as the "Log in" button
-                        minimumSize: Size(double.infinity, 50), // Make the button fill the width like the "Log in" button
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20), // Same border radius as the "Log in" button
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    // Don't have an account? Register option
+                    Align(
+                      alignment: Alignment.center,
+                      child: TextButton(
+                        onPressed: () {
+                          // Navigate to Registration Page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => SignupPage()),
+                          );
+                        },
+                        child: Text(
+                          "Don't have an account? Register",
+                          style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
@@ -220,9 +239,10 @@ class _LoginPageState extends State<LoginPage> {
   void _checkIfUserExists(User user) async {
     if (user.metadata.creationTime != user.metadata.lastSignInTime) {
       // Existing user, proceed to HomePage
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+            (Route<dynamic> route) => false,
       );
     } else {
       // User is new, prevent account from being saved and sign them out

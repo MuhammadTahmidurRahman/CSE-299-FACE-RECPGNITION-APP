@@ -1,8 +1,30 @@
 import 'package:flutter/material.dart';
 import 'create_event.dart';  // Create Event Page
 import 'join_event.dart';  // Join Event Page
+import 'profile.dart';  // Profile Page
 
-class CreateOrJoinRoomPage extends StatelessWidget {
+class CreateOrJoinRoomPage extends StatefulWidget {
+  @override
+  _CreateOrJoinRoomPageState createState() => _CreateOrJoinRoomPageState();
+}
+
+class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
+  int _selectedIndex = 0;
+
+  // Function to handle bottom navigation bar tap
+  void _onItemTapped(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfilePage()), // Navigate to Profile Page
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,6 +116,22 @@ class CreateOrJoinRoomPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+      // Bottom Navigation Bar
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.black,
+        onTap: _onItemTapped,
       ),
     );
   }

@@ -5,7 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pictora/createorjoinroom.dart';
+import 'createorjoinroom.dart';
 import 'login.dart';
 
 class SignupPage extends StatefulWidget {
@@ -93,10 +93,7 @@ class _SignupPageState extends State<SignupPage> {
       return null;
     }
 
-    String fileName = DateTime
-        .now()
-        .millisecondsSinceEpoch
-        .toString();
+    String fileName = DateTime.now().millisecondsSinceEpoch.toString();
     Reference firebaseStorageRef = FirebaseStorage.instance.ref().child(
         'uploads/$fileName');
 
@@ -131,9 +128,7 @@ class _SignupPageState extends State<SignupPage> {
 
   // Register user with Firebase (Email/Password)
   Future<void> _registerUser() async {
-    if (_passwordController.text
-        .trim()
-        .length < 6) {
+    if (_passwordController.text.trim().length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Password must be at least 6 characters long")),
       );
@@ -151,9 +146,11 @@ class _SignupPageState extends State<SignupPage> {
         await _uploadImageToFirebase(_image!);
       }
 
-      Navigator.push(
+      // Navigate to CreateOrJoinRoomPage and clear the back stack
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+            (Route<dynamic> route) => false,  // This removes all previous routes
       );
     } catch (e) {
       print("Registration failed: $e");
@@ -191,13 +188,14 @@ class _SignupPageState extends State<SignupPage> {
         String? imageUrl = await _uploadImageToFirebase(_image!);
 
         if (imageUrl != null) {
-          // You can store the image URL in the user's Firestore profile or other database if needed
           print("Image URL after Google Sign-In: $imageUrl");
         }
 
-        Navigator.push(
+        // Navigate to CreateOrJoinRoomPage and clear the back stack
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+              (Route<dynamic> route) => false,  // No back navigation possible
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -324,16 +322,16 @@ class _SignupPageState extends State<SignupPage> {
                       onTap: _showImagePickerDialog,
                       child: Container(
                         width: double.infinity,
-                        height: 60, // Same height as email and password fields
+                        height: 60,
                         padding: EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3), // Same background color
-                          borderRadius: BorderRadius.circular(10), // Rounded corners
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.camera_alt, color: Colors.white), // Camera icon
-                            SizedBox(width: 15), // Space between icon and text
+                            Icon(Icons.camera_alt, color: Colors.white),
+                            SizedBox(width: 15),
                             Text(
                               _image == null ? 'Upload your photo here' : 'Photo selected',
                               style: TextStyle(color: Colors.white, fontSize: 16),
@@ -347,9 +345,9 @@ class _SignupPageState extends State<SignupPage> {
                       onPressed: _registerUser,
                       child: _isUploading
                           ? CircularProgressIndicator(color: Colors.white)
-                          : Text('Sign Up', style: TextStyle(color: Colors.white)), // Text color set to white
+                          : Text('Sign Up', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black, // Button background color set to black
+                        backgroundColor: Colors.black,
                         minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -358,11 +356,11 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                     SizedBox(height: 20),
                     ElevatedButton.icon(
-                      icon: Icon(Icons.login, color: Colors.white), // Icon color set to white
-                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Text color set to white
+                      icon: Icon(Icons.login, color: Colors.white),
+                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)),
                       onPressed: _signInWithGoogle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black, // Button background color set to black
+                        backgroundColor: Colors.black,
                         minimumSize: Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
