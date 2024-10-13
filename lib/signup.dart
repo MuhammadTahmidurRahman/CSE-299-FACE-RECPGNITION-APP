@@ -128,11 +128,31 @@ class _SignupPageState extends State<SignupPage> {
 
   // Register user with Firebase (Email/Password)
   Future<void> _registerUser() async {
+    // Check if all fields are filled
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty ||
+        _confirmPasswordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please fill up all the information box properly.")),
+      );
+      return; // Exit the method if validation fails
+    }
+
+    // Check if passwords match
+    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Passwords do not match")),
+      );
+      return; // Exit the method if passwords do not match
+    }
+
+    // Check if password length is at least 6 characters
     if (_passwordController.text.trim().length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Password must be at least 6 characters long")),
       );
-      return;
+      return; // Exit the method if password length is insufficient
     }
 
     try {
@@ -204,193 +224,211 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-        Image.asset(
-        'assets/hpbg1.png',
-        fit: BoxFit.cover,
-      ),
-      SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Create an Account',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Please fill in the information below to create an account.',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                SizedBox(height: 40),
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(color: Colors.white),
-                    filled: true,
-                    fillColor: Colors.black.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  style: TextStyle(color: Colors.white),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscureTextPassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    labelStyle: TextStyle(color: Colors.white),
-                    filled: true,
-                    fillColor: Colors.black.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureTextPassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.white,
-                      ),
+          Image.asset(
+            'assets/hpbg1.png',
+            fit: BoxFit.cover,
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        setState(() {
-                          _obscureTextPassword = !_obscureTextPassword;
-                        });
+                        Navigator.pop(context);
                       },
                     ),
-                  ),
-                  style: TextStyle(color: Colors.white),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureTextConfirmPassword,
-                  decoration: InputDecoration(
-                    labelText: 'Confirm Password',
-                    labelStyle: TextStyle(color: Colors.white),
-                    filled: true,
-                    fillColor: Colors.black.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureTextConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    SizedBox(height: 20),
+                    Text(
+                      'Create an Account',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
-                        });
-                      },
                     ),
-                  ),
-                  style: TextStyle(color: Colors.white),
-                ),
-                SizedBox(height: 20),
+                    SizedBox(height: 10),
+                    Text(
+                      'Please fill in the information below to create an account.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(height: 40),
 
-                // Image upload button
-                GestureDetector(
-                  onTap: _showImagePickerDialog,
-                  child: Container(
-                    height: 60,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.camera_alt, color: Colors.white),
-                        SizedBox(width: 15),
-                        Text(
-                          _image == null ? 'Upload your photo here' : 'Photo selected',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
+                    // Name TextField
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
+                      ),
+                      style: TextStyle(color: Colors.white),
                     ),
-                  ),
-                ),
-                SizedBox(height: 20),
+                    SizedBox(height: 20),
 
-                // Sign Up button
-                GestureDetector(
-                  onTap: _registerUser,
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 2),
+                    // Email TextField
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
                     ),
-                    child: Center(
-                      child: _isUploading
-                          ? CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      )
-                          : Text(
-                        'Sign Up',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+                    SizedBox(height: 20),
+
+                    // Password TextField
+                    TextField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureTextPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureTextPassword = !_obscureTextPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
+                      obscureText: _obscureTextPassword,
+                    ),
+                    SizedBox(height: 20),
+
+                    // Confirm Password TextField
+                    TextField(
+                      controller: _confirmPasswordController,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm Password',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureTextConfirmPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureTextConfirmPassword =
+                              !_obscureTextConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
+                      obscureText: _obscureTextConfirmPassword,
+                    ),
+                    SizedBox(height: 20),
+
+                    // Upload Image Button
+                    GestureDetector(
+                      onTap: _showImagePickerDialog,
+                      child: Container(
+                        width: double.infinity,
+                        height: 60, // Same height as email and password fields
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3), // Same background color
+                          borderRadius: BorderRadius.circular(10), // Rounded corners
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.camera_alt, color: Colors.white), // Camera icon
+                            SizedBox(width: 15), // Space between icon and text
+                            Text(
+                              _image == null ? 'Upload your photo here' : 'Photo selected',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(height: 20),
 
-                // Google sign-in button
-                ElevatedButton.icon(
-                  icon: Icon(Icons.login, color: Colors.white),
-                  label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)),
-                  onPressed: _signInWithGoogle,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    minimumSize: Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+
+                    ElevatedButton(
+                      onPressed: _registerUser,
+                      child: _isUploading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text('Sign Up', style: TextStyle(color: Colors.white)), // Text color set to white
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black, // Button background color set to black
+                        minimumSize: Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(height: 20),
+                    SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.login, color: Colors.white), // Icon color set to white
+                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Text color set to white
+                      onPressed: _signInWithGoogle,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black, // Button background color set to black
+                        minimumSize: Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
 
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-                    );
-                  },
-                  child: Text("Already have an account? Log In",
-                      style: TextStyle(color: Colors.white)),
+
+                    // Go to Login Page
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => LoginPage()),
+                        );
+                      },
+                      child: Center(
+                        child: Text(
+                          'Already have an account? Login',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      )
         ],
       ),
     );
