@@ -17,6 +17,9 @@ class _SignupPageState extends State<SignupPage> {
   bool _obscureTextPassword = true;
   bool _obscureTextConfirmPassword = true;
   File? _image;
+
+  // Controllers for the text fields
+  final _nameController = TextEditingController(); // New controller for Name
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -94,8 +97,8 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     String fileName = DateTime.now().millisecondsSinceEpoch.toString();
-    Reference firebaseStorageRef = FirebaseStorage.instance.ref().child(
-        'uploads/$fileName');
+    Reference firebaseStorageRef =
+    FirebaseStorage.instance.ref().child('uploads/$fileName');
 
     try {
       setState(() {
@@ -104,8 +107,7 @@ class _SignupPageState extends State<SignupPage> {
       UploadTask uploadTask = firebaseStorageRef.putFile(image);
 
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        print('Upload progress: ${(snapshot.bytesTransferred /
-            snapshot.totalBytes) * 100} %');
+        print('Upload progress: ${(snapshot.bytesTransferred / snapshot.totalBytes) * 100} %');
       });
 
       TaskSnapshot taskSnapshot = await uploadTask;
@@ -146,11 +148,9 @@ class _SignupPageState extends State<SignupPage> {
         await _uploadImageToFirebase(_image!);
       }
 
-      // Navigate to CreateOrJoinRoomPage and clear the back stack
-      Navigator.pushAndRemoveUntil(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
-            (Route<dynamic> route) => false,  // This removes all previous routes
       );
     } catch (e) {
       print("Registration failed: $e");
@@ -163,8 +163,7 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _signInWithGoogle() async {
     if (_image == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-            "Please upload an image before signing up with Google")),
+        SnackBar(content: Text("Please upload an image before signing up with Google")),
       );
       return;
     }
@@ -173,29 +172,27 @@ class _SignupPageState extends State<SignupPage> {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser != null) {
-        final GoogleSignInAuthentication googleAuth = await googleUser
-            .authentication;
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        UserCredential userCredential = await FirebaseAuth.instance
-            .signInWithCredential(credential);
+        UserCredential userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
 
         // Upload the image after Google Sign-In
         String? imageUrl = await _uploadImageToFirebase(_image!);
 
         if (imageUrl != null) {
+          // You can store the image URL in the user's Firestore profile or other database if needed
           print("Image URL after Google Sign-In: $imageUrl");
         }
 
-        // Navigate to CreateOrJoinRoomPage and clear the back stack
-        Navigator.pushAndRemoveUntil(
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
-              (Route<dynamic> route) => false,  // No back navigation possible
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -248,6 +245,24 @@ class _SignupPageState extends State<SignupPage> {
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     SizedBox(height: 40),
+
+                    // Name text field
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Email text field
                     TextField(
                       controller: _emailController,
                       decoration: InputDecoration(
@@ -262,6 +277,8 @@ class _SignupPageState extends State<SignupPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     SizedBox(height: 20),
+
+                    // Password text field
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscureTextPassword,
@@ -275,8 +292,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureTextPassword ? Icons.visibility_off : Icons
-                                .visibility,
+                            _obscureTextPassword ? Icons.visibility_off : Icons.visibility,
                             color: Colors.white,
                           ),
                           onPressed: () {
@@ -289,6 +305,8 @@ class _SignupPageState extends State<SignupPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     SizedBox(height: 20),
+
+                    // Confirm Password text field
                     TextField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureTextConfirmPassword,
@@ -302,15 +320,12 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureTextConfirmPassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                            _obscureTextConfirmPassword ? Icons.visibility_off : Icons.visibility,
                             color: Colors.white,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureTextConfirmPassword =
-                              !_obscureTextConfirmPassword;
+                              _obscureTextConfirmPassword = !_obscureTextConfirmPassword;
                             });
                           },
                         ),
@@ -318,65 +333,77 @@ class _SignupPageState extends State<SignupPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _showImagePickerDialog,
-                      child: Container(
-                        width: double.infinity,
-                        height: 60,
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(10),
+
+                    // Image upload button
+                    Row(
+                      children: [
+                        _image == null
+                            ? Text(
+                          'No image selected.',
+                          style: TextStyle(color: Colors.white),
+                        )
+                            : Image.file(
+                          _image!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.camera_alt, color: Colors.white),
-                            SizedBox(width: 15),
-                            Text(
-                              _image == null ? 'Upload your photo here' : 'Photo selected',
-                              style: TextStyle(color: Colors.white, fontSize: 16),
-                            ),
-                          ],
+                        Spacer(),
+                        ElevatedButton(
+                          onPressed: _showImagePickerDialog,
+                          child: Text("Upload Image"),
                         ),
-                      ),
+                      ],
                     ),
                     SizedBox(height: 20),
+
+                    // Register button
                     ElevatedButton(
                       onPressed: _registerUser,
                       child: _isUploading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text('Sign Up', style: TextStyle(color: Colors.white)),
+                          ? CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                          : Text('Register'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Colors.blue,
+                        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
                     SizedBox(height: 20),
+
+                    // Google sign-in button
                     ElevatedButton.icon(
-                      icon: Icon(Icons.login, color: Colors.white),
-                      label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)),
                       onPressed: _signInWithGoogle,
+                      icon: Icon(Icons.login),
+                      label: Text('Sign in with Google'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Colors.red,
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
                     SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
+
+                    // Link to log in page
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => LoginPage()),
                         );
                       },
-                      child: Text("Already have an account? Log In",
-                          style: TextStyle(color: Colors.white)),
+                      child: Center(
+                        child: Text(
+                          'Already have an account? Log in',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ],
                 ),
