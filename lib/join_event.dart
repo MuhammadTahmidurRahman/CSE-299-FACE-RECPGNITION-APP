@@ -77,12 +77,11 @@ class _JoinEventPageState extends State<JoinEventPage> {
                           child: MobileScanner(
                             controller: cameraController,
                             onDetect: (capture) {
-                              // Accessing the list of barcodes detected
                               final List<Barcode> barcodes = capture.barcodes;
                               if (barcodes.isNotEmpty) {
-                                // Getting the rawValue from the first barcode detected
                                 final String? code = barcodes.first.rawValue;
                                 if (code != null) {
+                                  print("Scanned Code: $code"); // Debugging line
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -90,7 +89,11 @@ class _JoinEventPageState extends State<JoinEventPage> {
                                     ),
                                   );
                                   Navigator.of(context).pop(); // Close the dialog
+                                } else {
+                                  print("No code found");
                                 }
+                              } else {
+                                print("No barcodes detected");
                               }
                             },
                           ),

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart'; // For copying to clipboard
-import 'package:path_provider/path_provider.dart'; // For saving the QR code image
-import 'dart:io'; // For File handling
-import 'dart:ui' as ui; // For capturing the QR image
-import 'package:pretty_qr_code/pretty_qr_code.dart'; // Import the pretty_qr_code package
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'eventroom.dart';
+import 'join_event.dart';
 
 class CreateEventPage extends StatefulWidget {
   @override
@@ -13,26 +15,23 @@ class CreateEventPage extends StatefulWidget {
 }
 
 class _CreateEventPageState extends State<CreateEventPage> {
-  String _eventCode = '';  // Initially empty
-  bool _isEventCodeGenerated = false;
-  String _qrData = '';
-  GlobalKey _qrKey = GlobalKey();  // Key for QR widget
+  String _eventCode = '';
+  bool _isCodeGenerated = false;
+  GlobalKey _qrKey = GlobalKey();
 
-  // Function to generate a random event code
   String _generateEventCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-    return String.fromCharCodes(Iterable.generate(8, (_) => chars.codeUnitAt(Random().nextInt(chars.length))));
+    return String.fromCharCodes(
+        Iterable.generate(8, (_) => chars.codeUnitAt(Random().nextInt(chars.length))));
   }
 
-  // Function to generate a QR code
   void _generateQrCode() {
     setState(() {
-      _qrData = _generateEventCode();  // Generate a new unique code for QR
-      _isEventCodeGenerated = true;    // Show the event code
+      _eventCode = _generateEventCode();
+      _isCodeGenerated = true;
     });
   }
 
-  // Function to capture and save the QR code as an image file
   Future<void> _saveQrCode() async {
     try {
       RenderRepaintBoundary boundary = _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
@@ -50,16 +49,25 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
   }
 
-  // Function to share the QR code (this could integrate with a sharing package)
-  void _shareQrCode() {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Share QR code logic')));
+  void _navigateToEventRoom() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EventRoom(eventCode: _eventCode)),
+    );
+  }
+
+  void _navigateToJoinEvent() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => JoinEventPage()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create a Room'),  // Updated title for Create Event Page
+        title: Text('Create a Room'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -68,7 +76,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png',  // Background image
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
           Padding(
@@ -76,37 +84,21 @@ class _CreateEventPageState extends State<CreateEventPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Current location display
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: Text(
-                    'Current Location\nDhaka, Bangladesh',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                if (!_isCodeGenerated)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _generateQrCode,
+                      child: Text('Create Code', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      ),
+                    ),
                   ),
-                ),
                 SizedBox(height: 20),
 
-                // Event code generation button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Generate event code', style: TextStyle(fontSize: 18, color: Colors.white)),
-                    Switch(
-                      value: _isEventCodeGenerated,
-                      onChanged: (val) {
-                        if (!_isEventCodeGenerated) {
-                          setState(() {
-                            _eventCode = _generateEventCode();  // Generate event code on button click
-                            _isEventCodeGenerated = true;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-
-                if (_isEventCodeGenerated) // Only show the event code if it's generated
+                if (_eventCode.isNotEmpty)
                   Container(
                     padding: EdgeInsets.all(15),
                     decoration: BoxDecoration(
@@ -129,18 +121,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                   ),
                 SizedBox(height: 20),
 
-                ElevatedButton(
-                  onPressed: _generateQrCode,  // Generate QR code when pressed
-                  child: Text('Generate QR Code'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  ),
-                ),
-
-                SizedBox(height: 20),
-
-                // Display the QR code if generated
-                if (_qrData.isNotEmpty)
+                if (_eventCode.isNotEmpty)
                   Column(
                     children: [
                       RepaintBoundary(
@@ -149,40 +130,61 @@ class _CreateEventPageState extends State<CreateEventPage> {
                           height: 150,
                           width: 150,
                           child: PrettyQr(
-                            // Using PrettyQr to generate the QR code
-                            data: _qrData,
-                            size: 200.0,
+                            data: _eventCode,
+                            size: 150.0,
                             roundEdges: true,
                           ),
                         ),
                       ),
                       SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.download),
-                            onPressed: _saveQrCode,  // Save QR code logic
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.share),
-                            onPressed: _shareQrCode,  // Share QR code logic
-                          ),
-                        ],
+                      IconButton(
+                        icon: Icon(Icons.download),
+                        onPressed: _saveQrCode,
                       ),
                     ],
                   ),
 
+                SizedBox(height: 20),
+
+                if (_eventCode.isNotEmpty)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _navigateToEventRoom,
+                      child: Text('Create Room', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      ),
+                    ),
+                  ),
+                SizedBox(height: 10),
+
+                if (_eventCode.isNotEmpty)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _navigateToJoinEvent,
+                      child: Text('Join Room', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      ),
+                    ),
+                  ),
                 SizedBox(height: 30),
 
-                // Back to Create/Join Room Page
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);  // Navigate back to CreateOrJoinRoomPage
-                  },
-                  child: Text('Back to Room Selection'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Back to Room Selection', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    ),
                   ),
                 ),
               ],
