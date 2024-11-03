@@ -3,8 +3,65 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login.dart'; // Import your login page for sign-out
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
   final User? user = FirebaseAuth.instance.currentUser; // Get the current logged-in user
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  // Function to update the display name in Firebase
+  Future<void> _updateDisplayName(String newName) async {
+    if (user != null) {
+      await user!.updateDisplayName(newName);
+      await user!.reload();
+      setState(() {
+        // Refresh the user object with the updated information
+        FirebaseAuth.instance.currentUser;
+      });
+    }
+  }
+
+  // Function to show a dialog for editing the name
+  void _showEditNameDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Name'),
+          content: TextField(
+            controller: _nameController,
+            decoration: InputDecoration(hintText: "Enter your new name"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (_nameController.text.isNotEmpty) {
+                  await _updateDisplayName(_nameController.text);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,24 +116,31 @@ class ProfilePage extends StatelessWidget {
             ListTile(
               leading: Icon(Icons.edit),
               title: Text('Edit Profile'),
-              onTap: () {
-                // Logic to edit the profile (you can create a separate edit profile page)
-              },
+              onTap: _showEditNameDialog, // Call the dialog function
             ),
             Divider(),
             ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Settings'),
+              leading: Icon(Icons.support),
+              title: Text('Developer Support'),
               onTap: () {
-                // Logic to open settings page (if needed)
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.help),
-              title: Text('Help & Support'),
-              onTap: () {
-                // Logic to open help page (if needed)
+                // Logic for contacting developer support (e.g., open an email or support page)
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('Contact Developer Support'),
+                      content: Text('For assistance, please reach out at: support@yourapp.com'),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text('Close'),
+                        ),
+                      ],
+                    );
+                  },
+                );
               },
             ),
           ],
