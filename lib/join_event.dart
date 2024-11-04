@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'; // Import the mobile scanner package
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class JoinEventPage extends StatefulWidget {
   @override
@@ -8,6 +8,7 @@ class JoinEventPage extends StatefulWidget {
 
 class _JoinEventPageState extends State<JoinEventPage> {
   MobileScannerController cameraController = MobileScannerController();
+  String scannedCode = '';
 
   @override
   Widget build(BuildContext context) {
@@ -30,23 +31,10 @@ class _JoinEventPageState extends State<JoinEventPage> {
           ),
         ],
         centerTitle: true,
-        title: Column(
-          children: [
-            Text(
-              'Current Location',
-              style: TextStyle(fontSize: 14, color: Colors.white),
-            ),
-            Text(
-              'Dhaka, Bangladesh',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
-          ],
-        ),
       ),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Image
           Image.asset(
             'assets/hpbg1.png', // Replace with your background image asset
             fit: BoxFit.cover,
@@ -56,7 +44,6 @@ class _JoinEventPageState extends State<JoinEventPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // QR Code Icon
                 Icon(
                   Icons.qr_code_rounded,
                   size: 120,
@@ -67,43 +54,67 @@ class _JoinEventPageState extends State<JoinEventPage> {
                 // Scan to join button
                 ElevatedButton(
                   onPressed: () {
-                    // Open the QR scanner in a dialog
                     showDialog(
                       context: context,
-                      builder: (context) => Dialog(
-                        child: Container(
-                          width: 300,
-                          height: 400,
-                          child: MobileScanner(
-                            controller: cameraController,
-                            onDetect: (capture) {
-                              final List<Barcode> barcodes = capture.barcodes;
-                              if (barcodes.isNotEmpty) {
-                                final String? code = barcodes.first.rawValue;
-                                if (code != null) {
-                                  print("Scanned Code: $code"); // Debugging line
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EventPage(eventCode: code), // Pass the scanned event code to the event page
+                      builder: (context) => StatefulBuilder(
+                        builder: (context, setState) {
+                          return Dialog(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (scannedCode.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'Scanned Code: $scannedCode',
+                                      style: TextStyle(fontSize: 16, color: Colors.black),
                                     ),
-                                  );
-                                  Navigator.of(context).pop(); // Close the dialog
-                                } else {
-                                  print("No code found");
-                                }
-                              } else {
-                                print("No barcodes detected");
-                              }
-                            },
-                          ),
-                        ),
+                                  ),
+                                Container(
+                                  width: 300,
+                                  height: 400,
+                                  child: MobileScanner(
+                                    controller: cameraController,
+                                    onDetect: (capture) {
+                                      final List<Barcode> barcodes = capture.barcodes;
+                                      if (barcodes.isNotEmpty) {
+                                        final String? code = barcodes.first.rawValue;
+                                        if (code != null && code != scannedCode) {
+                                          setState(() {
+                                            scannedCode = code;
+                                          });
+                                          Future.delayed(Duration(seconds: 1), () {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => EventPage(eventCode: scannedCode),
+                                              ),
+                                            );
+                                          });
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text('Cancel'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    backgroundColor: Colors.blue, // Button color
+                    backgroundColor: Colors.blue,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
