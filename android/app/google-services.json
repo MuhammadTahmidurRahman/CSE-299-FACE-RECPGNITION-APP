@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:155732133141:android:35363a99691182f26dd51c",
+        "mobilesdk_app_id": "1:155732133141:android:9e75ab8328dedb6e6dd51c",
         "android_client_info": {
           "package_name": "com.example.pictora"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "155732133141-ukbq0kqne0ni9p22bljvik945f2tv8bj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBxZncK_wu0SeXVkdG5XKnzk5TJAzN4bD0"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "155732133141-ukbq0kqne0ni9p22bljvik945f2tv8bj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
