@@ -37,16 +37,31 @@ class _JoinEventPageState extends State<JoinEventPage> {
       return;
     }
 
+    String sanitizedEmail = userEmail.replaceAll('.', '_');
+
+    // Fetch initial data from users/[userId]
+    final userRef = _databaseRef.child('users/${user!.uid}');
+    final userSnapshot = await userRef.get();
+
+    if (!userSnapshot.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User information not found!')),
+      );
+      return;
+    }
+
+    String guestName = userSnapshot.child('name').value as String? ?? 'Guest';
+    String guestPhotoUrl = userSnapshot.child('photo').value as String? ?? '';
+
+    // Set initial guest data
     final guestData = {
       'guestId': user!.uid,
-      'guestName': userName,
+      'guestName': guestName,
       'guestEmail': userEmail,
-      'guestPhotoUrl': userPhotoUrl,
+      'guestPhotoUrl': guestPhotoUrl,
     };
 
-    String sanitizedEmail = userEmail.replaceAll('.', '_');
-    String compositeKey = '${eventCode}_${roomName}_${sanitizedEmail}_${userName}';
-
+    String compositeKey = '${eventCode}_${roomName}_${sanitizedEmail}_$guestName';
     final guestRef = _databaseRef.child('rooms/$eventCode/guests/$compositeKey');
     final guestSnapshot = await guestRef.get();
 
@@ -58,24 +73,98 @@ class _JoinEventPageState extends State<JoinEventPage> {
       );
     }
 
-    FirebaseAuth.instance.userChanges().listen((user) async {
-      if (user != null && user.uid == guestData['guestId']) {
-        final updatedName = user.displayName ?? userName;
-        final updatedPhotoUrl = user.photoURL ?? userPhotoUrl;
+    // Set up a real-time listener for changes to users/[userId]
+    userRef.onValue.listen((event) async {
+      final updatedUserSnapshot = event.snapshot;
+      if (updatedUserSnapshot.exists) {
+        final updatedName = updatedUserSnapshot.child('name').value as String? ?? guestName;
+        final updatedPhotoUrl = updatedUserSnapshot.child('photo').value as String? ?? guestPhotoUrl;
 
-        await guestRef.update({
-          'guestName': updatedName,
-          'guestPhotoUrl': updatedPhotoUrl,
-        });
+        // Check if the name has changed
+        if (updatedName != guestName || updatedPhotoUrl != guestPhotoUrl) {
+          // Update guest information with the new name and photo
+          guestName = updatedName;
+          guestPhotoUrl = updatedPhotoUrl;
+
+          // Update guest information in the room
+          await guestRef.update({
+            'guestName': guestName,
+            'guestPhotoUrl': guestPhotoUrl,
+          });
+
+          // If the guest name has changed, update the composite key
+          String newCompositeKey = '${eventCode}_${roomName}_${sanitizedEmail}_$guestName';
+
+          if (newCompositeKey != compositeKey) {
+            // Remove the old entry and add a new entry with the updated composite key
+            await _databaseRef.child('rooms/$eventCode/guests/$compositeKey').remove();
+
+            await _databaseRef.child('rooms/$eventCode/guests/$newCompositeKey').set({
+              'guestId': user!.uid,
+              'guestName': guestName,
+              'guestEmail': userEmail,
+              'guestPhotoUrl': guestPhotoUrl,
+            });
+
+            // Update the composite key to the new one
+            compositeKey = newCompositeKey;
+          }
+        }
       }
     });
 
+    // Navigate to the Event Room page after joining
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => EventRoom(eventCode: eventCode),
       ),
     );
+  }
+
+
+  void _listenToUserChanges() {
+    FirebaseAuth.instance.userChanges().listen((updatedUser) async {
+      if (updatedUser != null && updatedUser.uid == user!.uid) {
+        final updatedName = updatedUser.displayName ?? userName;
+        final updatedPhotoUrl = updatedUser.photoURL ?? userPhotoUrl;
+
+        if (updatedName != userName || updatedPhotoUrl != userPhotoUrl) {
+          setState(() {
+            userName = updatedName;
+            userPhotoUrl = updatedPhotoUrl;
+          });
+
+          // Update guest entries in all rooms where this user has joined
+          _databaseRef.child('rooms').get().then((roomsSnapshot) {
+            if (roomsSnapshot.exists) {
+              final rooms = roomsSnapshot.value as Map<dynamic, dynamic>;
+
+              rooms.forEach((eventCode, roomData) {
+                final guests = roomData['guests'] as Map<dynamic, dynamic>?;
+
+                guests?.forEach((key, guest) async {
+                  if (guest['guestId'] == user!.uid) {
+                    // Create new composite key with the updated name
+                    String sanitizedEmail = userEmail.replaceAll('.', '_');
+                    final newCompositeKey = '${eventCode}_${roomData['roomName']}_${sanitizedEmail}_$updatedName';
+
+                    // Remove old guest entry and add new entry with updated composite key
+                    await _databaseRef.child('rooms/$eventCode/guests/$key').remove();
+                    await _databaseRef.child('rooms/$eventCode/guests/$newCompositeKey').set({
+                      'guestId': user!.uid,
+                      'guestName': updatedName,
+                      'guestEmail': userEmail,
+                      'guestPhotoUrl': updatedPhotoUrl,
+                    });
+                  }
+                });
+              });
+            }
+          });
+        }
+      }
+    });
   }
 
   Future<void> _navigateToEventRoom(String code) async {
