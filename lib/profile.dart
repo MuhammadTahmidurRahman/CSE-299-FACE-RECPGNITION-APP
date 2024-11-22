@@ -44,17 +44,49 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _updateDisplayName(String newName) async {
     if (user != null) {
+      String uid = user!.uid;
       await user!.updateDisplayName(newName);
       await user!.reload();
       setState(() {
         FirebaseAuth.instance.currentUser;
       });
 
-      await _database.child('users').child(user!.uid).update({
+      // Update the name in 'users' node
+      await _database.child('users').child(uid).update({
         'name': newName,
       });
+
+      // Update the name in all 'rooms' where the user is a host or participant
+      DatabaseReference roomsRef = _database.child('rooms');
+      DataSnapshot roomsSnapshot = await roomsRef.get();
+
+      if (roomsSnapshot.exists) {
+        Map<dynamic, dynamic> roomsData = roomsSnapshot.value as Map<dynamic, dynamic>;
+
+        for (var roomId in roomsData.keys) {
+          final roomData = roomsData[roomId];
+
+          // Update if user is the host
+          if (roomData['hostId'] == uid) {
+            await roomsRef.child(roomId).update({
+              'hostName': newName,
+            });
+          }
+
+          // Update if user is a participant
+          if (roomData['participants'] != null) {
+            Map<dynamic, dynamic> participants = roomData['participants'];
+            if (participants.containsKey(uid)) {
+              await roomsRef.child(roomId).child('participants').child(uid).update({
+                'name': newName,
+              });
+            }
+          }
+        }
+      }
     }
   }
+
 
   void _showEditNameDialog() {
     showDialog(
