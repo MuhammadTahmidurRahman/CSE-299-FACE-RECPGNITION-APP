@@ -26,8 +26,47 @@ class _JoinEventPageState extends State<JoinEventPage> {
       userName = user!.displayName ?? 'Guest';
       userEmail = user!.email ?? 'guest@example.com';
       userPhotoUrl = user!.photoURL ?? '';
+      _listenForUserProfileChanges();
     }
   }
+
+  // Global listener for user profile changes
+  void _listenForUserProfileChanges() {
+    final userRef = _databaseRef.child("users/${user!.uid}");
+
+    userRef.onValue.listen((event) async {
+      // Get the updated name and photo URL
+      final updatedName = event.snapshot.child("name").value as String? ?? userName;
+      final updatedPhotoUrl = event.snapshot.child("photo").value as String? ?? userPhotoUrl;
+
+      // Check if there's any change
+      if (updatedName != userName || updatedPhotoUrl != userPhotoUrl) {
+        setState(() {
+          userName = updatedName;
+          userPhotoUrl = updatedPhotoUrl;
+        });
+
+        // Fetch all rooms
+        final roomsSnapshot = await _databaseRef.child('rooms').get();
+        for (var room in roomsSnapshot.children) {
+          final eventCode = room.key;
+
+          // Check if the user is a participant in the room
+          final participantRef = _databaseRef.child('rooms/$eventCode/participants/${user!.uid}');
+          final participantSnapshot = await participantRef.get();
+
+          if (participantSnapshot.exists) {
+            // Update the user's name and photo URL in the participants list of each room
+            await participantRef.update({
+              'name': userName,
+              'photoUrl': userPhotoUrl,
+            });
+          }
+        }
+      }
+    });
+  }
+
 
   Future<void> _joinRoomAsParticipant(String eventCode, String roomName) async {
     if (user == null) {
@@ -37,7 +76,6 @@ class _JoinEventPageState extends State<JoinEventPage> {
       return;
     }
 
-    // Fetch room data
     final roomRef = _databaseRef.child('rooms/$eventCode');
     final roomSnapshot = await roomRef.get();
 
@@ -50,13 +88,11 @@ class _JoinEventPageState extends State<JoinEventPage> {
 
     final roomData = roomSnapshot.value as Map<dynamic, dynamic>;
 
-    // Check if user is the host
     if (roomData['hostId'] == user!.uid) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('You are the host of this room!')),
       );
 
-      // Navigate to the Event Room as host
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -66,7 +102,6 @@ class _JoinEventPageState extends State<JoinEventPage> {
       return;
     }
 
-    // Check if user is already a participant
     final participantsRef = roomRef.child('participants/${user!.uid}');
     final participantSnapshot = await participantsRef.get();
 
@@ -75,7 +110,6 @@ class _JoinEventPageState extends State<JoinEventPage> {
         SnackBar(content: Text('You are already a participant in this room!')),
       );
 
-      // Navigate to the Event Room as participant
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -85,20 +119,17 @@ class _JoinEventPageState extends State<JoinEventPage> {
       return;
     }
 
-    // If the user is neither the host nor an existing participant, add as a new participant
     String sanitizedEmail = userEmail.replaceAll('.', '_');
 
-    // Participant data
+    // Updated participant data without 'uploadedPhotoFolderPath'
     final participantData = {
       'name': userName,
       'email': userEmail,
-      'uploadedPhotoFolderPath': 'rooms/$eventCode/${user!.uid}',
-      'faceReferencePhotoUrl': userPhotoUrl,
+      'photoUrl': userPhotoUrl,
     };
 
     await participantsRef.set(participantData);
 
-    // Navigate to the Event Room after joining
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -107,14 +138,27 @@ class _JoinEventPageState extends State<JoinEventPage> {
     );
   }
 
+
   Future<void> _navigateToEventRoom(String code) async {
+    // Check if the entered code is empty
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a room code!')),
+      );
+      return;
+    }
+
+    // Fetch the room data from Firebase
     final snapshot = await _databaseRef.child('rooms/$code').get();
 
     if (snapshot.exists) {
       final roomData = snapshot.value as Map<dynamic, dynamic>;
-      final roomName = roomData['roomName'] ?? 'No Room Name';
+      final roomName = roomData['roomName'] as String? ?? 'No Room Name';
+
+      // If room exists, proceed to join the room
       await _joinRoomAsParticipant(code, roomName);
     } else {
+      // Show an error message if the room does not exist
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Room does not exist!')),
       );
@@ -205,7 +249,7 @@ class _JoinEventPageState extends State<JoinEventPage> {
                                                     final snapshot = await _databaseRef.child('rooms/$code').get();
                                                     if (snapshot.exists) {
                                                       final roomData = snapshot.value as Map<dynamic, dynamic>;
-                                                      final roomName = roomData['roomName'] ?? 'No Room Name';
+                                                      final roomName = roomData['roomName'] as String? ?? 'No Room Name';
 
                                                       Navigator.of(context).pop();
                                                       await _joinRoomAsParticipant(code, roomName);

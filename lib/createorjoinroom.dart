@@ -38,24 +38,30 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
           final roomData = child.value as Map<dynamic, dynamic>;
           final String roomCode = child.key!;
           final String roomName = roomData['roomName']?.toString() ?? 'Unknown Room';
-          final String? hostId = roomData['hostId']?.toString();
+          final hostData = roomData['host'] as Map<dynamic, dynamic>?;
           bool isUserInRoom = false;
           String hostName = 'Unknown Host';
 
-          // Check if the current user is the host
-          if (hostId == user?.uid) {
-            isUserInRoom = true;
-            hostName = roomData['participants'][hostId]['name']?.toString() ?? 'Unknown Host';
+          if (hostData != null) {
+            for (var hostEntry in hostData.values) {
+              final hostDetails = hostEntry as Map<dynamic, dynamic>;
+              final String? hostId = hostDetails['hostId'];
+              hostName = hostDetails['hostName']?.toString() ?? 'Unknown Host';
+
+              if (hostId == user?.uid) {
+                isUserInRoom = true;
+              }
+            }
           }
 
-          // Check if the current user is in participants
-          final participantsData = roomData['participants'] as Map<dynamic, dynamic>?;
-          if (!isUserInRoom && participantsData != null) {
-            for (var participantEntry in participantsData.entries) {
-              final participantId = participantEntry.key;
-              if (participantId == user?.uid) {
+          final guestsData = roomData['guests'] as Map<dynamic, dynamic>?;
+          if (!isUserInRoom && guestsData != null) {
+            for (var guestEntry in guestsData.values) {
+              final guestDetails = guestEntry as Map<dynamic, dynamic>;
+              final String? guestId = guestDetails['guestId'];
+
+              if (guestId == user?.uid) {
                 isUserInRoom = true;
-                hostName = roomData['participants'][hostId]['name']?.toString() ?? 'Unknown Host';
                 break;
               }
             }
