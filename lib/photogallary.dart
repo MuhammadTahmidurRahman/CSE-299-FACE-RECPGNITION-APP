@@ -40,7 +40,29 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
 
     try {
       final DatabaseReference ref = FirebaseDatabase.instance.ref();
-      final DataSnapshot snapshot = await ref
+
+      // Fetch the hostId from the event data
+      final DataSnapshot hostIdSnapshot = await ref
+          .child("rooms")
+          .child(widget.eventCode)
+          .child("hostId")
+          .get();
+
+      if (!hostIdSnapshot.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Event data not found.")),
+        );
+        return;
+      }
+
+      final String hostId = hostIdSnapshot.value as String;
+      print("Host ID: $hostId");
+
+      // Check if the current user is the host
+      final bool isHost = user.uid == hostId;
+
+      // Only allow access to the user's specific folder, regardless of role
+      final DataSnapshot folderPathSnapshot = await ref
           .child("rooms")
           .child(widget.eventCode)
           .child("participants")
@@ -48,31 +70,27 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
           .child("folderPath")
           .get();
 
-      if (!snapshot.exists) {
+      if (!folderPathSnapshot.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Photo folder path not found.")),
         );
         return;
       }
 
-      final String folderPath = snapshot.value as String;
-      print("Folder Path: $folderPath"); // Debug line for path
+      final String folderPath = folderPathSnapshot.value as String;
+      print("Fetching images from: $folderPath");
 
-      // Fetch images from Firebase Storage
-      final ListResult result = await _storage.ref(folderPath).listAll();
-      print("Number of images found: ${result.items.length}"); // Log item count
-
-      if (result.items.isEmpty) {
+      // Ensure that only the host accesses host's folder path, others access only their own
+      if (!isHost && folderPath == "rooms/${widget.eventCode}/$hostId") {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No images found in the folder.")),
+          SnackBar(content: Text("Access denied: Cannot view host's uploads.")),
         );
+        return;
       }
 
-      final urls = await Future.wait(result.items.map((item) async {
-        final url = await item.getDownloadURL();
-        print("Fetched URL: $url"); // Log each fetched URL
-        return url;
-      }).toList());
+      // Fetch images only from the user's assigned folder in Firebase Storage
+      final ListResult result = await _storage.ref(folderPath).listAll();
+      final urls = await Future.wait(result.items.map((item) => item.getDownloadURL()).toList());
 
       setState(() {
         _photoUrls = urls;
@@ -84,6 +102,9 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
       );
     }
   }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
