@@ -13,97 +13,6 @@ class CreateOrJoinRoomPage extends StatefulWidget {
 
 class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
   int _selectedIndex = 0;
-  final User? user = FirebaseAuth.instance.currentUser;
-  List<Map<String, String>> rooms = [];
-  bool _isLoading = true;
-  String _errorMessage = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchRoomsFromFirebase();
-    _listenForRoomDeletions();
-  }
-
-  // Fetch rooms from Firebase Realtime Database
-  Future<void> _fetchRoomsFromFirebase() async {
-    try {
-      final DatabaseReference roomRef = FirebaseDatabase.instance.ref('rooms');
-      final snapshot = await roomRef.get();
-
-      if (snapshot.exists) {
-        List<Map<String, String>> fetchedRooms = [];
-
-        for (var child in snapshot.children) {
-          final roomData = child.value as Map<dynamic, dynamic>;
-          final String roomCode = child.key!;
-          final String roomName = roomData['roomName']?.toString() ?? 'Unknown Room';
-          final hostData = roomData['host'] as Map<dynamic, dynamic>?;
-          bool isUserInRoom = false;
-          String hostName = 'Unknown Host';
-
-          if (hostData != null) {
-            for (var hostEntry in hostData.values) {
-              final hostDetails = hostEntry as Map<dynamic, dynamic>;
-              final String? hostId = hostDetails['hostId'];
-              hostName = hostDetails['hostName']?.toString() ?? 'Unknown Host';
-
-              if (hostId == user?.uid) {
-                isUserInRoom = true;
-              }
-            }
-          }
-
-          final guestsData = roomData['guests'] as Map<dynamic, dynamic>?;
-          if (!isUserInRoom && guestsData != null) {
-            for (var guestEntry in guestsData.values) {
-              final guestDetails = guestEntry as Map<dynamic, dynamic>;
-              final String? guestId = guestDetails['guestId'];
-
-              if (guestId == user?.uid) {
-                isUserInRoom = true;
-                break;
-              }
-            }
-          }
-
-          if (isUserInRoom) {
-            fetchedRooms.add({
-              'roomCode': roomCode,
-              'roomName': roomName,
-              'hostName': hostName,
-            });
-          }
-        }
-
-        setState(() {
-          rooms = fetchedRooms;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          rooms = [];
-          _isLoading = false;
-        });
-      }
-    } catch (error) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Failed to fetch rooms. Please try again later.';
-      });
-    }
-  }
-
-  // Listen for room deletions from Firebase
-  void _listenForRoomDeletions() {
-    final DatabaseReference roomRef = FirebaseDatabase.instance.ref('rooms');
-    roomRef.onChildRemoved.listen((event) {
-      final String deletedRoomCode = event.snapshot.key!;
-      setState(() {
-        rooms.removeWhere((room) => room['roomCode'] == deletedRoomCode);
-      });
-    });
-  }
 
   // Function to handle bottom navigation bar tap
   void _onItemTapped(int index) {
@@ -257,33 +166,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.black,
         onTap: _onItemTapped,
-      ),
-    );
-  }
-
-  // Helper function to build room cards
-  Widget _buildRoomCard(String roomName, String hostName, String roomCode) {
-    return GestureDetector(
-      onTap: () {
-        _navigateToEventRoom(roomCode);
-      },
-      child: Card(
-        color: Colors.white.withOpacity(0.85),
-        margin: EdgeInsets.symmetric(vertical: 10),
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: ListTile(
-          title: Text(
-            roomName,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          subtitle: Text('Hosted by: $hostName'),
-        ),
       ),
     );
   }
