@@ -1,141 +1,304 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'eventroom.dart';
+import 'join_event.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_database/firebase_database.dart'; // Import this package
+import 'package:firebase_database/firebase_database.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class CreateEventPage extends StatefulWidget {
   @override
-  _ForgotPasswordPageState createState() => _ForgotPasswordPageState();
+  _CreateEventPageState createState() => _CreateEventPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _emailController = TextEditingController();
+class _CreateEventPageState extends State<CreateEventPage> {
+  String _eventCode = '';
+  bool _isCodeGenerated = false;
+  GlobalKey _qrKey = GlobalKey();
+  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
 
-  void _resetPassword() async {
-    String email = _emailController.text.trim();
-    if (email.isNotEmpty) {
-      try {
-        // Check if user exists by trying to send the password reset email
-        await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+  String _generateEventCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+    return String.fromCharCodes(
+        Iterable.generate(8, (_) => chars.codeUnitAt(Random().nextInt(chars.length))));
+  }
 
-        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+  void _generateQrCode() {
+    setState(() {
+      _eventCode = _generateEventCode();
+      _isCodeGenerated = true;
+    });
+  }
 
-        // Show a success dialog
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('Password Reset'),
-              content: Text('A password reset link has been sent to $email'),
-              actions: [
-                TextButton(
-                  child: Text('OK'),
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      } on FirebaseAuthException catch (e) {
-        // Handle specific Firebase exceptions
-        String errorMessage;
-        if (e.code == 'user-not-found') {
-          errorMessage = 'No user found for that email. Please sign up.';
-        } else {
-          errorMessage = 'Failed to send reset email. Please try again later.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-          ),
-        );
-      }
-    } else {
-      // Show an error if the email field is empty
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter your email address'),
-        ),
-      );
+  Future<void> _saveQrCode() async {
+    try {
+      RenderRepaintBoundary boundary = _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final buffer = byteData!.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/qr_code.png');
+      await file.writeAsBytes(buffer);
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('QR Code saved at ${file.path}')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save QR Code: $e')));
     }
+  }
+
+  Future<void> _createRoomInFirebase(String roomName) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final uid = currentUser?.uid;
+
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not logged in!")));
+      return;
+    }
+
+    // Fetch user's current profile data from `users` node in Firebase
+    final userRef = _databaseRef.child("users/$uid");
+    final userSnapshot = await userRef.get();
+    final name = userSnapshot.child("name").value ?? 'Unknown';
+    final photoUrl = userSnapshot.child("photo").value ?? '';
+    final email = currentUser?.email?.replaceAll('.', '_') ?? 'unknown_example_com';
+
+    // Reference to the room in Firebase (event room directly under eventCode)
+    final roomRef = _databaseRef.child("rooms/$_eventCode");
+
+    // Check if the room already exists
+    final snapshot = await roomRef.get();
+    if (snapshot.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Room code already exists!")));
+      return;
+    }
+
+    // Save the event room details under rooms/$eventCode
+    await roomRef.set({
+      'eventCode': _eventCode,
+      'roomName': roomName,
+      'hostId': uid,
+      'hostUploadedPhotoFolderPath': "rooms/$_eventCode/$uid",
+    });
+
+    // Save the host's initial information under rooms/$eventCode/participants/hostId
+    final participantsRef = roomRef.child("participants/$uid");
+    await participantsRef.set({
+      'name': name,
+      'photoUrl': photoUrl,
+      'email': email,
+    });
+
+    // Listen for updates in the user's profile in the `users` node
+    userRef.onValue.listen((event) async {
+      final updatedName = event.snapshot.child("name").value ?? name;
+      final updatedPhotoUrl = event.snapshot.child("photo").value ?? photoUrl;
+
+      // Update participant's information in rooms/$eventCode/participants/hostId if there's any change in the profile data
+      if (updatedName != name || updatedPhotoUrl != photoUrl) {
+        await participantsRef.update({
+          'name': updatedName,
+          'photoUrl': updatedPhotoUrl,
+        });
+      }
+    });
+
+    // Navigate to the event room
+    _navigateToEventRoom();
+  }
+
+  void _promptRoomName() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String roomName = '';
+        return AlertDialog(
+          title: Text("Set Room Name"),
+          content: TextField(
+            onChanged: (value) => roomName = value,
+            decoration: InputDecoration(hintText: "Enter room name"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (roomName.isNotEmpty) {
+                  Navigator.pop(context);
+                  _createRoomInFirebase(roomName);
+                }
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToEventRoom() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EventRoom(eventCode: _eventCode)),
+    );
+  }
+
+  void _navigateToJoinEvent() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => JoinEventPage()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,  // Makes the body extend under the AppBar
+      appBar: AppBar(
+        title: Text(
+          'Create a Room',
+          style: TextStyle(
+            fontSize: 24,        // Larger font size
+            fontWeight: FontWeight.bold,  // Bold text
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      resizeToAvoidBottomInset: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background image
+          // Set the background image and make it cover the whole screen
           Image.asset(
-            'assets/hpbg1.png',  // Background image
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
-          SafeArea(
+          SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Back arrow (upper left corner)
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);  // Go back to login page
-                    },
-                  ),
-                  SizedBox(height: 20),
-                  // Forgot password title
-                  Text(
-                    'Forgot Password',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Enter your registered email to reset your password.',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  SizedBox(height: 40),
-                  // Email input field
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      labelStyle: TextStyle(color: Colors.white),
-                      filled: true,
-                      fillColor: Colors.black.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (!_isCodeGenerated)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _generateQrCode,
+                            child: Text('Create Code', style: TextStyle(color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            ),
+                          ),
+                        ),
+                      SizedBox(height: 20),
+
+                      if (_eventCode.isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(_eventCode, style: TextStyle(fontSize: 24)),
+                              IconButton(
+                                icon: Icon(Icons.copy),
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: _eventCode));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copied to clipboard!')));
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      SizedBox(height: 20),
+
+                      if (_eventCode.isNotEmpty)
+                        Column(
+                          children: [
+                            RepaintBoundary(
+                              key: _qrKey,
+                              child: Container(
+                                height: 150,
+                                width: 150,
+                                child: PrettyQr(
+                                  data: _eventCode,
+                                  size: 150.0,
+                                  roundEdges: true,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            IconButton(
+                              icon: Icon(Icons.download),
+                              onPressed: _saveQrCode,
+                            ),
+                          ],
+                        ),
+
+                      SizedBox(height: 20),
+
+                      if (_eventCode.isNotEmpty)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _promptRoomName,
+                            child: Text('Create Room', style: TextStyle(color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            ),
+                          ),
+                        ),
+                      SizedBox(height: 10),
+
+                      if (_eventCode.isNotEmpty)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _navigateToJoinEvent,
+                            child: Text('Join Room', style: TextStyle(color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            ),
+                          ),
+                        ),
+                      SizedBox(height: 30),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text('Back to Room Selection', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                          ),
+                        ),
                       ),
-                    ),
-                    style: TextStyle(color: Colors.white),
+                    ],
                   ),
-                  SizedBox(height: 40),
-                  // Reset Password button
-                  ElevatedButton(
-                    onPressed: _resetPassword,  // Call the reset password function
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Reset Password',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

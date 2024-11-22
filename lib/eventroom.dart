@@ -117,143 +117,143 @@ class EventRoom extends StatelessWidget {
     final String username = user?.displayName ?? 'Guest';
 
     return Scaffold(
-        body: Stack(
-            fit: StackFit.expand,
-            children: [
-            Image.asset('assets/hpbg1.png', fit: BoxFit.cover),
-        FutureBuilder<DataSnapshot>(
-        future: _databaseRef.child("rooms/$eventCode").get(),
-    builder: (context, snapshot) {
-    if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
-    if (snapshot.hasError) return Center(child: Text("Error loading room data"));
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/hpbg1.png', fit: BoxFit.cover),
+          FutureBuilder<DataSnapshot>(
+            future: _databaseRef.child("rooms/$eventCode").get(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+              if (snapshot.hasError) return Center(child: Text("Error loading room data"));
 
-    final roomData = snapshot.data!.value as Map<dynamic, dynamic>? ?? {};
-    final roomName = roomData['roomName'] ?? 'No Room Name';
-    final hostId = roomData['hostId'];
+              final roomData = snapshot.data!.value as Map<dynamic, dynamic>? ?? {};
+              final roomName = roomData['roomName'] ?? 'No Room Name';
+              final hostId = roomData['hostId'];
 
-    // Fetching host data
-    final hostData = roomData['participants'][hostId] as Map<dynamic, dynamic>? ?? {};
-    String hostName = hostData['name'] ?? 'Unknown Host';
-    String? hostPhotoUrl = hostData['photoUrl'];
-    bool isHost = currentUserId == hostId;
-    bool hostHasUploadedPhotos = roomData['hostUploadedPhotoFolderPath'] != null;
+              // Fetching host data
+              final hostData = roomData['participants'][hostId] as Map<dynamic, dynamic>? ?? {};
+              String hostName = hostData['name'] ?? 'Unknown Host';
+              String? hostPhotoUrl = hostData['photoUrl'];
+              bool isHost = currentUserId == hostId;
+              bool hostHasUploadedPhotos = roomData['hostUploadedPhotoFolderPath'] != null;
 
-    // Fetching guests data
-    final guestsData = roomData['participants'] as Map<dynamic, dynamic>? ?? {};
-    List<Map<String, dynamic>> guestList = [];
-    guestsData.forEach((participantId, participantData) {
-    if (participantId != hostId) { // Skip the host when listing guests
-    final guest = participantData as Map<dynamic, dynamic>;
-    guestList.add({
-    'guestId': participantId,
-    'guestName': guest['name'] ?? 'Unknown Guest',
-    'guestPhotoUrl': guest['photoUrl'],
-    'guestUploadedPhotoFile': guest['folderPath'], // Adjust to your data structure
-    });
-    }
-    });
+              // Fetching guests data
+              final guestsData = roomData['participants'] as Map<dynamic, dynamic>? ?? {};
+              List<Map<String, dynamic>> guestList = [];
+              guestsData.forEach((participantId, participantData) {
+                if (participantId != hostId) { // Skip the host when listing guests
+                  final guest = participantData as Map<dynamic, dynamic>;
+                  guestList.add({
+                    'guestId': participantId,
+                    'guestName': guest['name'] ?? 'Unknown Guest',
+                    'guestPhotoUrl': guest['photoUrl'],
+                    'guestUploadedPhotoFile': guest['folderPath'], // Adjust to your data structure
+                  });
+                }
+              });
 
-    return Column(
-    children: [
-    Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.start,
-    children: [
-    IconButton(
-    icon: Icon(Icons.arrow_back, color: Colors.black),
-    onPressed: () {
-    Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
-    (route) => false,
-    );
-    },
-    ),
-    Expanded(
-    child: Center(
-    child: Text(
-    'Event Room',
-    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-    ),
-    ),
-    ),
-    SizedBox(width: 40),
-    ],
-    ),
-    ),
-    Padding(
-    padding: const EdgeInsets.all(20.0),
-    child: Column(
-    children: [
-    Text(roomName, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-    SizedBox(height: 10),
-    Text('Room Code: $eventCode', style: TextStyle(fontSize: 16, color: Colors.white)),
-    Text('Host: $hostName', style: TextStyle(fontSize: 16, color: Colors.white)),
-    if (hostPhotoUrl != null)
-    CircleAvatar(backgroundImage: NetworkImage(hostPhotoUrl), radius: 30),
-    if (hostHasUploadedPhotos)
-    IconButton(
-    icon: Icon(Icons.folder, color: Colors.blue),
-    onPressed: () => _openPhotoGallery(context, 'host', hostId),
-    ),
-    ],
-    ),
-    ),
-    Expanded(
-    child: ListView(
-    padding: const EdgeInsets.all(20.0),
-    children: [
-    ElevatedButton(
-    onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
-    style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-    child: Text("Upload Photo", style: TextStyle(color: Colors.white)),
-    ),
-    if (isHost)
-    ElevatedButton(
-    onPressed: () => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => ArrangedPhotoPage(eventCode: eventCode)),
-    ),
-    style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-    child: Text("Arrange Photo", style: TextStyle(color: Colors.white)),
-    ),
-    if (isHost)
-    ElevatedButton(
-    onPressed: () => _showDeleteRoomDialog(context),
-    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-    child: Text("Delete Room"),
-    ),
-    SizedBox(height: 20),
-    Text('Guests:', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-    ...guestList.map((guest) {
-    bool hasUploadedPhoto = guest['guestUploadedPhotoFile'] != null;
-    bool canAccessPhotos = isHost || guest['guestId'] == currentUserId;
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.black),
+                          onPressed: () {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+                                  (route) => false,
+                            );
+                          },
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'Event Room',
+                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 40),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Text(roomName, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                        SizedBox(height: 10),
+                        Text('Room Code: $eventCode', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        Text('Host: $hostName', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        if (hostPhotoUrl != null)
+                          CircleAvatar(backgroundImage: NetworkImage(hostPhotoUrl), radius: 30),
+                        if (hostHasUploadedPhotos)
+                          IconButton(
+                            icon: Icon(Icons.folder, color: Colors.blue),
+                            onPressed: () => _openPhotoGallery(context, 'host', hostId),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(20.0),
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                          child: Text("Upload Photo", style: TextStyle(color: Colors.white)),
+                        ),
+                        if (isHost)
+                          ElevatedButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ArrangedPhotoPage(eventCode: eventCode)),
+                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                            child: Text("Arrange Photo", style: TextStyle(color: Colors.white)),
+                          ),
+                        if (isHost)
+                          ElevatedButton(
+                            onPressed: () => _showDeleteRoomDialog(context),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: Text("Delete Room"),
+                          ),
+                        SizedBox(height: 20),
+                        Text('Guests:', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ...guestList.map((guest) {
+                          bool hasUploadedPhoto = guest['guestUploadedPhotoFile'] != null;
+                          bool canAccessPhotos = isHost || guest['guestId'] == currentUserId;
 
-    return ListTile(
-    leading: guest['guestPhotoUrl'] != null
-    ? CircleAvatar(backgroundImage: NetworkImage(guest['guestPhotoUrl']), radius: 25)
-        : CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-    title: Text(guest['guestName'], style: TextStyle(color: Colors.white)),
-    trailing: hasUploadedPhoto
-    ? IconButton(
-    icon: Icon(Icons.folder, color: Colors.blue),
-    onPressed: canAccessPhotos
-    ? () => _openPhotoGallery(context, 'guest', guest['guestId'])
-        : null,
-    )
-        : Icon(Icons.photo_outlined, color: Colors.grey),
-    );
-    }).toList(),
-    ],
-    ),
-    ),
-    ],
-    );
-    },
-        ),
-            ],
-        ),
+                          return ListTile(
+                            leading: guest['guestPhotoUrl'] != null
+                                ? CircleAvatar(backgroundImage: NetworkImage(guest['guestPhotoUrl']), radius: 25)
+                                : CircleAvatar(backgroundColor: Colors.grey, radius: 25),
+                            title: Text(guest['guestName'], style: TextStyle(color: Colors.white)),
+                            trailing: hasUploadedPhoto
+                                ? IconButton(
+                              icon: Icon(Icons.folder, color: Colors.blue),
+                              onPressed: canAccessPhotos
+                                  ? () => _openPhotoGallery(context, 'guest', guest['guestId'])
+                                  : null,
+                            )
+                                : Icon(Icons.photo_outlined, color: Colors.grey),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
