@@ -1,3 +1,4 @@
+import 'dart:ui'; // For BackdropFilter
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -25,7 +26,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
     _listenForRoomDeletions();
   }
 
-  // Fetch rooms from Firebase Realtime Database
   Future<void> _fetchRoomsFromFirebase() async {
     try {
       final DatabaseReference roomRef = FirebaseDatabase.instance.ref('rooms');
@@ -37,25 +37,28 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
         for (var child in snapshot.children) {
           final roomData = child.value as Map<dynamic, dynamic>;
           final String roomCode = child.key!;
-          final String roomName = roomData['roomName']?.toString() ?? 'Unknown Room';
+          final String roomName =
+              roomData['roomName']?.toString() ?? 'Unknown Room';
           final String? hostId = roomData['hostId']?.toString();
           bool isUserInRoom = false;
           String hostName = 'Unknown Host';
 
-          // Check if the current user is the host
           if (hostId == user?.uid) {
             isUserInRoom = true;
-            hostName = roomData['participants'][hostId]['name']?.toString() ?? 'Unknown Host';
+            hostName = roomData['participants'][hostId]['name']?.toString() ??
+                'Unknown Host';
           }
 
-          // Check if the current user is in participants
-          final participantsData = roomData['participants'] as Map<dynamic, dynamic>?;
+          final participantsData =
+          roomData['participants'] as Map<dynamic, dynamic>?;
           if (!isUserInRoom && participantsData != null) {
             for (var participantEntry in participantsData.entries) {
               final participantId = participantEntry.key;
               if (participantId == user?.uid) {
                 isUserInRoom = true;
-                hostName = roomData['participants'][hostId]['name']?.toString() ?? 'Unknown Host';
+                hostName =
+                    roomData['participants'][hostId]['name']?.toString() ??
+                        'Unknown Host';
                 break;
               }
             }
@@ -88,7 +91,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
     }
   }
 
-  // Listen for room deletions from Firebase
   void _listenForRoomDeletions() {
     final DatabaseReference roomRef = FirebaseDatabase.instance.ref('rooms');
     roomRef.onChildRemoved.listen((event) {
@@ -99,7 +101,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
     });
   }
 
-  // Function to handle bottom navigation bar tap
   void _onItemTapped(int index) {
     if (index == 1) {
       Navigator.push(
@@ -113,7 +114,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
     }
   }
 
-  // Navigate to the EventRoom page when a room is tapped
   void _navigateToEventRoom(String roomCode) {
     Navigator.push(
       context,
@@ -129,6 +129,7 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Background image
           Image.asset(
             'assets/hpbg1.png',
             fit: BoxFit.cover,
@@ -137,7 +138,6 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
             child: Column(
               children: [
                 Container(
-                  color: Colors.transparent,
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Center(
                     child: Text(
@@ -156,7 +156,10 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
                     ? Center(
                   child: Text(
                     _errorMessage,
-                    style: TextStyle(color: Colors.red, fontSize: 18),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 18,
+                    ),
                   ),
                 )
                     : Expanded(
@@ -173,14 +176,16 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.only(
+                      left: 20, right: 20, bottom: 90, top: 20),
                   child: Column(
                     children: [
                       ElevatedButton(
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => CreateEventPage()),
+                            MaterialPageRoute(
+                                builder: (context) => CreateEventPage()),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -207,7 +212,8 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => JoinEventPage()),
+                            MaterialPageRoute(
+                                builder: (context) => JoinEventPage()),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -235,48 +241,73 @@ class _CreateOrJoinRoomPageState extends State<CreateOrJoinRoomPage> {
               ],
             ),
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.black.withOpacity(0.4),
+                  ),
+                  child: BottomNavigationBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    items: const <BottomNavigationBarItem>[
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.home),
+                        label: 'Home',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.person),
+                        label: 'Profile',
+                      ),
+                    ],
+                    currentIndex: _selectedIndex,
+                    selectedItemColor: Colors.white,
+                    unselectedItemColor: Colors.white, // Ensure unselected items are fully white
+                    onTap: _onItemTapped,
+                  ),
+                ),
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.black,
-        onTap: _onItemTapped,
       ),
     );
   }
 
-  // Helper function to build room cards
   Widget _buildRoomCard(String roomName, String hostName, String roomCode) {
-    return GestureDetector(
-      onTap: () {
-        _navigateToEventRoom(roomCode);
-      },
-      child: Card(
-        color: Colors.white.withOpacity(0.85),
-        margin: EdgeInsets.symmetric(vertical: 10),
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: ListTile(
-          title: Text(
-            roomName,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: Colors.black.withOpacity(0.4),
+            ),
+            child: ListTile(
+              title: Text(
+                roomName,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              subtitle: Text(
+                'Hosted by: $hostName',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () => _navigateToEventRoom(roomCode),
             ),
           ),
-          subtitle: Text('Hosted by: $hostName'),
         ),
       ),
     );
