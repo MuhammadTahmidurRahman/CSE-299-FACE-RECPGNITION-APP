@@ -5,13 +5,15 @@ import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
+import 'package:flutter/services.dart'; // <-- Added import for PlatformException
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 
 class ArrangedPhotoPage extends StatefulWidget {
   final String eventCode;
-
+  final ScrollController _participantsController = ScrollController();
+  final ScrollController _manualGuestsController = ScrollController();
   ArrangedPhotoPage({required this.eventCode});
 
   @override
@@ -23,12 +25,41 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
   final FirebaseDatabase _database = FirebaseDatabase.instance;
   List<Map<String, dynamic>> _participants = [];
   List<Map<String, dynamic>> _manualParticipants = [];
+  String _roomName = '';
+  bool _isPhotosSent = false; // Track if photos are sent
 
   @override
   void initState() {
     super.initState();
+    _fetchRoomName();
     _fetchParticipants();
     _fetchManualParticipants();
+    super.initState();
+
+    // Assuming you have access to the eventCode (e.g., from the widget)
+    incrementSortPhotoRequest(widget.eventCode);
+  }
+
+  // Function to fetch room name from Firebase
+  Future<void> _fetchRoomName() async {
+    try {
+      final ref = _database.ref('rooms/${widget.eventCode}/roomName');
+      final snapshot = await ref.get();
+      if (snapshot.exists) {
+        setState(() {
+          _roomName = snapshot.value as String;
+        });
+      } else {
+        setState(() {
+          _roomName = 'Unknown Room';
+        });
+      }
+    } catch (e) {
+      print('Error fetching room name: $e');
+      setState(() {
+        _roomName = 'Unknown Room';
+      });
+    }
   }
 
   Future<void> _fetchParticipants() async {
@@ -88,19 +119,24 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     }
   }
 
-  Future<void> _downloadImagesAsZip(List<String> imageUrls, String participantName) async {
+  Future<void> _downloadImagesAsZip(List<String> imageUrls,
+      String participantName) async {
     try {
       // Request storage permission
-      if (await Permission.storage.request().isGranted ||
-          await Permission.manageExternalStorage.request().isGranted) {
-
+      if (await Permission.storage
+          .request()
+          .isGranted ||
+          await Permission.manageExternalStorage
+              .request()
+              .isGranted) {
         // Show confirmation dialog before downloading
         final confirmDownload = await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
               title: Text('Confirm Download'),
-              content: Text('Do you want to download this folder as a ZIP file?'),
+              content: Text(
+                  'Do you want to download this folder as a ZIP file?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -145,8 +181,10 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           encoder.close();
 
           // Define dynamic ZIP file name
-          final sanitizedEventCode = widget.eventCode.replaceAll(RegExp(r'[^\w\s-]'), '');
-          final sanitizedParticipantName = participantName.replaceAll(RegExp(r'[^\w\s-]'), '');
+          final sanitizedEventCode = widget.eventCode.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
+          final sanitizedParticipantName = participantName.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
           final zipFileName = '${sanitizedEventCode}_$sanitizedParticipantName.zip';
 
           // Save the ZIP file to the Downloads directory
@@ -179,20 +217,61 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     }
   }
 
-  // Updated function to send email using flutter_email_sender
+  Future<void> incrementSortPhotoRequest(String eventCode) async {
+    final DatabaseReference hostRef = FirebaseDatabase.instance
+        .ref('rooms/$eventCode/host');
+
+    try {
+      // Get the current sortPhotoRequest value
+      final snapshot = await hostRef.get();
+
+      double currentSortValue = 0.0;  // Default to 0.0 if not found
+
+      if (snapshot.exists) {
+        final hostData = snapshot.value as Map<dynamic, dynamic>?;
+        if (hostData != null && hostData.containsKey('sortPhotoRequest')) {
+          final dynamic currentValue = hostData['sortPhotoRequest'];
+
+          // Check if the value is an int or a double, and ensure it's a double
+          if (currentValue is int) {
+            currentSortValue = currentValue.toDouble();
+          } else if (currentValue is double) {
+            currentSortValue = currentValue;
+          }
+        }
+      }
+
+      // Increment the value by 1
+      final newSortValue = currentSortValue + 1.0;
+
+      // Update the sortPhotoRequest field in the database while preserving existing data
+      await hostRef.update({
+        'sortPhotoRequest': newSortValue,
+      });
+
+      print("sortPhotoRequest incremented to: $newSortValue");
+    } catch (e) {
+      print('Error updating sortPhotoRequest: $e');
+    }
+  }
+
+  // Updated function to send email using flutter_email_sender with enhanced email content
   Future<void> _sendEmail(Map<String, dynamic> participant) async {
     final String email = participant['email'];
     final String name = participant['name'];
     final bool isManual = participant['isManual'];
-    final String subject = 'Your Photos for ${widget.eventCode}';
+    final String subject = 'Your Photos from $_roomName (${widget.eventCode})';
     String body = '';
 
     if (isManual) {
       try {
         // Request storage permission
-        if (await Permission.storage.request().isGranted ||
-            await Permission.manageExternalStorage.request().isGranted) {
-
+        if (await Permission.storage
+            .request()
+            .isGranted ||
+            await Permission.manageExternalStorage
+                .request()
+                .isGranted) {
           // Show loading indicator
           showDialog(
             context: context,
@@ -232,8 +311,10 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           encoder.close();
 
           // Define dynamic ZIP file name
-          final sanitizedEventCode = widget.eventCode.replaceAll(RegExp(r'[^\w\s-]'), '');
-          final sanitizedParticipantName = name.replaceAll(RegExp(r'[^\w\s-]'), '');
+          final sanitizedEventCode = widget.eventCode.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
+          final sanitizedParticipantName = name.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
           final zipFileName = '${sanitizedEventCode}_$sanitizedParticipantName.zip';
 
           // Save the ZIP file to the Downloads directory
@@ -250,8 +331,15 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           final savedFile = await File(zipFilePath).copy(savePath);
 
           // Prepare the email with attachment
+          body = 'Hello $name,\n\n'
+              'We are pleased to share with you the photos from the $_roomName (${widget
+              .eventCode}). '
+              'Please find your photos from the event in the attached file.\n\n'
+              'Best regards,\n'
+              'Your Event Team';
+
           final Email mail = Email(
-            body: 'Please find attached your photos for the event "${widget.eventCode}".',
+            body: body,
             subject: subject,
             recipients: [email],
             attachmentPaths: [savedFile.path],
@@ -262,19 +350,34 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           Navigator.pop(context);
 
           // Send the email
-          await FlutterEmailSender.send(mail);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Email sent to $email')),
-          );
+          try {
+            await FlutterEmailSender.send(mail);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Email sent to $email')),
+            );
+          } on PlatformException catch (ex) {
+            Navigator.pop(context); // Ensure the loading indicator is dismissed
+            if (ex.code == 'not_available') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(
+                    'No email client found on this device. Please install an email app.')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(
+                    'Failed to send email. Error: ${ex.message}')),
+              );
+            }
+          }
         } else {
-          Navigator.pop(context); // Dismiss loading indicator
+          Navigator.pop(
+              context); // Dismiss loading indicator if permission denied
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Storage permission is required.')),
           );
         }
       } catch (e) {
-        Navigator.pop(context); // Dismiss loading indicator
+        Navigator.pop(context); // Dismiss loading indicator in case of error
         print('Error sending email: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send email.')),
@@ -282,7 +385,10 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
       }
     } else {
       // For regular participants, send email without attachment
-      body = 'Hello $name,\n\nHere are your photos from the event "${widget.eventCode}".\n\nBest regards,\nEvent Team';
+      body = 'Hello $name,\n\n'
+          'Here are your photos from the $_roomName (${widget.eventCode}).\n\n'
+          'Best regards,\n'
+          'Event Team';
 
       final Email mail = Email(
         body: body,
@@ -296,12 +402,73 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Email sent to $email')),
         );
+      } on PlatformException catch (ex) {
+        if (ex.code == 'not_available') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(
+                'No email client found on this device. Please install an email app.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Failed to send email. Error: ${ex.message}')),
+          );
+        }
       } catch (e) {
         print('Error sending email: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send email.')),
         );
       }
+    }
+  }
+
+  // New function to send email to all participants
+  Future<void> _sendEmailToAll() async {
+    final List<String> emails =
+    _participants.map((participant) => participant['email'] as String).toList();
+
+    if (emails.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No participants to send email to.')),
+      );
+      return;
+    }
+
+    final String subject = 'Your Photos from $_roomName (${widget.eventCode})';
+    final String body = 'Hello everyone,\n\n'
+        'Your Photos has been sorted,Hurrah!!!,check our web pictora.netlify.app or our app pictora to get the photos  $_roomName (${widget.eventCode}).\n\n'
+        'Best regards,\n'
+        'Your Event Team\n''Developed By-,\n''Tahmid,Disha,Anika from NSU';
+
+    final Email mail = Email(
+      body: body,
+      subject: subject,
+      recipients: emails,
+      isHTML: false,
+    );
+
+    try {
+      await FlutterEmailSender.send(mail);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Email sent to all participants')),
+      );
+    } on PlatformException catch (ex) {
+      if (ex.code == 'not_available') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+              'No email client found on this device. Please install an email app.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send email. Error: ${ex.message}')),
+        );
+      }
+    } catch (e) {
+      print('Error sending email to all: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send email to all participants.')),
+      );
     }
   }
 
@@ -312,16 +479,20 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
         if (images.isEmpty) {
           _showNoPhotosMessage();
         } else {
-          _showImageGallery(images, participant['name'], participant['isManual'], participant);
+          _showImageGallery(
+              images, participant['name'], participant['isManual'],
+              participant);
         }
       },
       child: ListTile(
         leading: CircleAvatar(
-          backgroundImage: participant['photoUrl'] != null && participant['photoUrl'].isNotEmpty
+          backgroundImage: participant['photoUrl'] != null &&
+              participant['photoUrl'].isNotEmpty
               ? NetworkImage(participant['photoUrl'])
               : null,
           radius: 30,
-          child: participant['photoUrl'] == null || participant['photoUrl'].isEmpty
+          child: participant['photoUrl'] == null ||
+              participant['photoUrl'].isEmpty
               ? Icon(Icons.person, color: Colors.grey)
               : null,
         ),
@@ -339,7 +510,7 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
             ),
           ],
         ),
-        trailing: Icon(Icons.folder, color: Colors.blue),
+        trailing: Icon(Icons.folder, color: Colors.black),
       ),
     );
   }
@@ -364,8 +535,9 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     );
   }
 
-  // Updated to include Send Mail button
-  void _showImageGallery(List<String> images, String participantName, bool isManual, Map<String, dynamic> participant) {
+  // Updated to include Send Mail button with enhanced email content
+  void _showImageGallery(List<String> images, String participantName,
+      bool isManual, Map<String, dynamic> participant) {
     showDialog(
       context: context,
       builder: (context) {
@@ -422,46 +594,126 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
       },
     );
   }
-
+  final ScrollController _participantsController = ScrollController();
+  final ScrollController _manualGuestsController = ScrollController();
   @override
+  void dispose() {
+    final ScrollController _participantsController = ScrollController();
+    final ScrollController _manualGuestsController = ScrollController();
+    // Don't forget to dispose of your ScrollControllers
+    _participantsController.dispose();
+    _manualGuestsController.dispose();
+    super.dispose();
+
+  }
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Arranged Photo',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      // Removed the AppBar to allow the background image to occupy the entire screen
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          Image.asset('assets/hpbg1.png', fit: BoxFit.cover),
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Participants',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/hpbg1.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Overlayed Buttons and Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Row with Back Button and Send Email to All Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Back Button
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.black),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    // Title in the Middle
+                    Text(
+                      'Arranged Photo',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    // Send Email to All Participants Button
+                    IconButton(
+                      icon: Icon(Icons.email, color: Colors.black),
+                      onPressed: _sendEmailToAll,
+                      tooltip: 'Send Email to All Participants',
+                    ),
+                  ],
+                ),
+                // Participants and Manual Guests List
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center, // Center-align the content
+                      children: [
+                        // Participants Section
+                        Center(
+                          child: Text(
+                            'Participants',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 8),
+
+                        // Scrollable Participants List
+                        Expanded(
+                          child: Scrollbar(
+                            controller: _participantsController,
+                            child: SingleChildScrollView(
+                              controller: _participantsController,
+                              child: Column(
+                                children: _participants
+                                    .map((participant) => _buildParticipantItem(participant))
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 8), // Reduced space to move Manual Guests up slightly
+                        // Manual Guests Section (Moved up a bit)
+                        Center(
+                          child: Text(
+                            'Manual Guests',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        // Scrollable Manual Guests List
+                        Expanded(
+                          child: Scrollbar(
+                            controller: _manualGuestsController,
+                            child: SingleChildScrollView(
+                              controller: _manualGuestsController,
+                              child: Column(
+                                children: _manualParticipants
+                                    .map((manualParticipant) => _buildParticipantItem(manualParticipant))
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  ..._participants.map((participant) => _buildParticipantItem(participant)).toList(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Manual Guests',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                  ..._manualParticipants.map((manualParticipant) => _buildParticipantItem(manualParticipant)).toList(),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

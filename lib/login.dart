@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'forgot_password.dart'; // Forgot password page import
-import 'createorjoinroom.dart'; // Home page import
-import 'signup.dart'; // Import the registration page
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'forgot_password.dart';
+import 'createorjoinroom.dart';
+import 'signup.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -12,8 +14,8 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
-  final FirebaseAuth _auth = FirebaseAuth.instance;  // Instance of FirebaseAuth
-  final GoogleSignIn _googleSignIn = GoogleSignIn();  // Instance of GoogleSignIn
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -24,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hpbg1.png', // Background image for the login page
+            'assets/hpbg1.png',
             fit: BoxFit.cover,
           ),
           SafeArea(
@@ -34,11 +36,10 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Back arrow icon
                     IconButton(
                       icon: Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        Navigator.pop(context); // Navigate back to Welcome Page
+                        Navigator.pop(context);
                       },
                     ),
                     SizedBox(height: 20),
@@ -56,7 +57,6 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     SizedBox(height: 40),
-                    // Email field
                     TextField(
                       controller: _emailController,
                       decoration: InputDecoration(
@@ -71,7 +71,6 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     SizedBox(height: 20),
-                    // Password field
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscureText,
@@ -90,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureText = !_obscureText; // Toggle password visibility
+                              _obscureText = !_obscureText;
                             });
                           },
                         ),
@@ -102,7 +101,6 @@ class _LoginPageState extends State<LoginPage> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {
-                          // Navigate to Forgot Password page
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
@@ -115,7 +113,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    // Log in Button
                     ElevatedButton(
                       onPressed: _loginWithEmailPassword,
                       style: ElevatedButton.styleFrom(
@@ -133,7 +130,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    // Google Sign-In Button
                     ElevatedButton.icon(
                       onPressed: _loginWithGoogle,
                       icon: Icon(Icons.login, color: Colors.white),
@@ -151,12 +147,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    // Don't have an account? Register option
                     Align(
                       alignment: Alignment.center,
                       child: TextButton(
                         onPressed: () {
-                          // Navigate to Registration Page
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => SignupPage()),
@@ -178,136 +172,138 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Login with email and password
   Future<void> _loginWithEmailPassword() async {
     try {
+      // Validate email and password
+      if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Email and password cannot be empty.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Check if the email is registered
+      final List<String> signInMethods = await _auth.fetchSignInMethodsForEmail(_emailController.text.trim());
+
+      if (signInMethods.isEmpty) {
+        // No account found for the email
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No account found for this email.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Attempt to log in with email and password
       final User? user = (await _auth.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      )).user;
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      ))
+          .user;
 
       if (user != null) {
-        _checkIfUserExists(user); // Check if user is new
+        _checkIfUserExists(user); // Check if the user exists
       }
     } catch (e) {
-      print('Error: $e');
+      print('Login Error: $e');
+
       if (e is FirebaseAuthException) {
-        // Check for specific error codes
         if (e.code == 'user-not-found') {
-          // Show snackbar when no account is found
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('No account found. Please try again.'),
+              content: Text('No account found for this email.'),
               backgroundColor: Colors.red,
             ),
           );
         } else if (e.code == 'wrong-password') {
-          // Show snackbar for wrong password
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Email and password do not match. Please try again.'),
+              content: Text('Incorrect password. Please try again.'),
               backgroundColor: Colors.red,
             ),
           );
         } else {
-          // Show general error message for other cases
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('An error occurred. Please try again.'),
+              content: Text('Error: ${e.message}'),
               backgroundColor: Colors.red,
             ),
           );
         }
-      } else {
-        // Handle any other types of errors
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An unexpected error occurred. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }
 
-  // Login with Google
   Future<void> _loginWithGoogle() async {
     try {
-      // Initiate Google sign-in, which will display the account selection
+      // Sign out from the current Google account to reset the session
+      await _googleSignIn.signOut();
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        // The user canceled the sign-in
-        return;
+        return; // User canceled the sign-in
       }
 
-      // Get authentication details
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Create a credential using the Google sign-in information
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in using the Google credential
       final User? user = (await _auth.signInWithCredential(credential)).user;
 
       if (user != null) {
-        // Check if the user is new or existing
-        _checkIfUserExists(user);
+        _checkIfUserExists(user); // Check if the user exists
       }
     } catch (e) {
       print('Google Sign-In Error: $e');
-      if (e is FirebaseAuthException && e.code == 'account-exists-with-different-credential') {
-        _showErrorDialog('This Google account is already linked to another account.');
-      } else {
-        _showErrorDialog('No account found with this Google account. Please try again.');
-      }
+      _showErrorDialog('An error occurred during Google Sign-In. Please try again.');
     }
   }
 
-
-  // Check if the user exists (if the user is new or existing)
   void _checkIfUserExists(User user) async {
     try {
-      // Check if the user is newly created or existing
-      if (user.metadata.creationTime != user.metadata.lastSignInTime) {
-        // Existing user, proceed to HomePage
+      // Check if the user exists in Firebase (Firestore or Realtime Database)
+      final userRef = FirebaseDatabase.instance.ref('users/${user.uid}');
+      final snapshot = await userRef.get();
+
+      if (snapshot.exists) {
+        // User exists, navigate to the next page
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
-              (Route<dynamic> route) => false,
+              (route) => false,
         );
       } else {
-        // New user, sign out and show error
+        // User does not exist, sign out and show error
         await _auth.signOut();
         _showErrorDialog('You are not registered. Please sign up first.');
       }
     } catch (e) {
-      print('Error checking user existence: $e');
-      _showErrorDialog('An error occurred. Please try again.');
+      _showErrorDialog('Error checking user existence.');
     }
   }
 
-  // Show error dialog
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Error'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 }

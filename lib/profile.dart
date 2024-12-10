@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'createorjoinroom.dart';
-import 'login.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:ui'; // For ImageFilter
+import 'welcome.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -127,10 +128,14 @@ class _ProfilePageState extends State<ProfilePage> {
       if (user != null) {
         String uid = user!.uid;
 
+        // Remove user data from all rooms (participants)
+        await _deleteUserDataFromRooms(uid);
+
         // Delete profile image from Firebase Storage
         if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
           await FirebaseStorage.instance.refFromURL(_profileImageUrl!).delete();
         }
+
 
         // Delete user data from Firebase Realtime Database
         await _database.child('users/$uid').remove();
@@ -150,17 +155,51 @@ class _ProfilePageState extends State<ProfilePage> {
 
         // Delete user account from Firebase Auth
         await user!.delete();
+        // Sign out from Google
+        await _googleSignIn.signOut();
 
-        // Navigate back to login page
-        Navigator.pushReplacement(
+        // Navigate back to the Welcome page and remove all previous pages from the stack
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
+          MaterialPageRoute(builder: (context) => WelcomePage()),
+              (Route<dynamic> route) => false, // This removes all routes from the stack
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error deleting account: ${e.toString()}')),
       );
+    }
+  }
+  Future<void> _deleteUserDataFromRooms(String uid) async {
+    try {
+      // Get a reference to the rooms node in Firebase Realtime Database
+      DatabaseReference roomsRef = _database.child('rooms');
+
+      // Fetch all rooms data
+      DataSnapshot roomsSnapshot = await roomsRef.get();
+      if (roomsSnapshot.exists) {
+        Map<dynamic, dynamic> roomsData = roomsSnapshot.value as Map<dynamic, dynamic>;
+
+        // Iterate over each room to check if the user is a participant
+        for (var roomId in roomsData.keys) {
+          final roomData = roomsData[roomId];
+
+          // If the user is the host, skip removing them as they are already handled elsewhere
+          if (roomData['hostId'] == uid) continue;
+
+          // Check and remove the user from the 'participants' node
+          if (roomData['participants'] != null) {
+            Map<dynamic, dynamic> participants = roomData['participants'];
+            if (participants.containsKey(uid)) {
+              // Remove the user from the participants list
+              await roomsRef.child(roomId).child('participants').child(uid).remove();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error while deleting user data from rooms: ${e.toString()}');
     }
   }
 
@@ -189,6 +228,17 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         );
       },
+    );
+  }
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  Future<void> logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    // Sign out from Google
+    await _googleSignIn.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => WelcomePage()),
+          (Route<dynamic> route) => false, // This removes all routes from the stack
     );
   }
 
@@ -303,11 +353,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
                           onPressed: () async {
-                            await FirebaseAuth.instance.signOut();
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => LoginPage()),
-                            );
+                            await logout(context); // Call the centralized logout function
                           },
                           child: Text('Logout'),
                         ),

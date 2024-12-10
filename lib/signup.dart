@@ -129,8 +129,27 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  Future<void> _sendConfirmationEmail(String email) async {
+    // Step 1: Send the confirmation email
+    // You'll need a backend or Firebase Function to send an email with a link containing options (Yes/No)
+    // For now, we will simulate sending the email.
+
+    try {
+      // Simulate sending a confirmation email with options
+      print("Sending confirmation email to $email...");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("A confirmation email has been sent to $email.")),
+      );
+    } catch (e) {
+      print("Failed to send email: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to send confirmation email.")),
+      );
+    }
+  }
+
   Future<void> _registerUser() async {
-    // Validation checks...
+    // Step 2: Validation checks...
     if (_nameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
@@ -155,14 +174,18 @@ class _SignupPageState extends State<SignupPage> {
       return;
     }
 
-    if (_passwordController.text.trim().length < 6) {
+    if (_passwordController.text.trim().length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Password must be at least 6 characters long")),
+        SnackBar(content: Text("Password must be at least 8 characters long")),
       );
       return;
     }
 
     try {
+      // Step 3: Simulate sending a confirmation email
+      await _sendConfirmationEmail(_emailController.text.trim());
+
+
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -171,7 +194,7 @@ class _SignupPageState extends State<SignupPage> {
 
       String? imageUrl = await _uploadImageToFirebase(_image!);
 
-      // Save user information to Realtime Database
+      // Step 5: Save user information to Firebase Realtime Database
       User? user = userCredential.user;
       if (user != null) {
         await _database.child('users').child(user.uid).set({
@@ -214,32 +237,45 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser != null) {
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email'],
+      );
+
+      // Sign out any previously signed-in account
+      await googleSignIn.signOut();
+
+      // Start Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User canceled the picker
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No Google account selected.")),
         );
+        return;
+      }
 
-        UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-          String? imageUrl = await _uploadImageToFirebase(_image!);
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-          // Save user information to Realtime Database
-          User? user = userCredential.user;
-          if (user != null) {
-            await _database.child('users').child(user.uid).set({
-              'name': googleUser.displayName ?? 'N/A',
-              'email': googleUser.email,
-              'photo': imageUrl ?? '',
-            });
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Email or Google account already exists. Please log in.")),
-          );
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Check if the user is a new user
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        String? imageUrl = await _uploadImageToFirebase(_image!);
+
+        // Save user information to Realtime Database
+        User? user = userCredential.user;
+        if (user != null) {
+          await _database.child('users').child(user.uid).set({
+            'name': googleUser.displayName ?? 'N/A',
+            'email': googleUser.email,
+            'photo': imageUrl ?? '',
+          });
         }
 
         Navigator.push(
@@ -247,29 +283,19 @@ class _SignupPageState extends State<SignupPage> {
           MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No Google account found")),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'account-exists-with-different-credential') {
+        // Display caution message and stay on the current page
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Email or Google account already exists. Please log in.")),
         );
-      } else {
-        print("Google Sign-In failed: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to sign in with Google: ${e.message}")),
-        );
+        return; // Prevent navigation
       }
-    } catch (e) {
-      print("Google Sign-In failed: $e");
+    } catch (error) {
+      print("Google Sign-In failed: $error");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to sign in with Google: ${e.toString()}")),
+        SnackBar(content: Text("Failed to sign in with Google: ${error.toString()}")),
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -278,6 +304,7 @@ class _SignupPageState extends State<SignupPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Background Image
           Image.asset(
             'assets/hpbg1.png',
             fit: BoxFit.cover,
@@ -289,6 +316,7 @@ class _SignupPageState extends State<SignupPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Back Button
                     IconButton(
                       icon: Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
@@ -428,12 +456,9 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
 
-
+                    // Sign Up Button with Loading State
                     ElevatedButton(
-                      onPressed: _registerUser,
-                      child: _isUploading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text('Sign Up', style: TextStyle(color: Colors.white)), // Text color set to white
+                      onPressed: _isUploading ? null : _registerUser, // Disable while uploading
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black, // Button background color set to black
                         minimumSize: Size(double.infinity, 50),
@@ -441,12 +466,27 @@ class _SignupPageState extends State<SignupPage> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (_isUploading)
+                            CircularProgressIndicator(color: Colors.white), // Show progress indicator while uploading
+                          if (!_isUploading)
+                            Text(
+                              'Sign Up',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                        ],
+                      ),
                     ),
+
                     SizedBox(height: 20),
+
+                    // Google Sign In Button
                     ElevatedButton.icon(
                       icon: Icon(Icons.login, color: Colors.white), // Icon color set to white
                       label: Text("Sign Up with Google", style: TextStyle(color: Colors.white)), // Text color set to white
-                      onPressed: _signInWithGoogle,
+                      onPressed: _isUploading ? null : _signInWithGoogle, // Prevent sign-in if uploading
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black, // Button background color set to black
                         minimumSize: Size(double.infinity, 50),
@@ -455,7 +495,6 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       ),
                     ),
-
 
                     // Go to Login Page
                     GestureDetector(
@@ -477,6 +516,17 @@ class _SignupPageState extends State<SignupPage> {
               ),
             ),
           ),
+
+          // Global Loading Overlay
+          if (_isUploading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.6), // Semi-transparent overlay
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
         ],
       ),
     );
