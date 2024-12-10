@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_database/firebase_database.dart'; // Import this package
+import 'login.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   @override
@@ -8,28 +13,39 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _emailController = TextEditingController();
 
-  void _resetPassword() {
-    // Mock password reset process
+  void _resetPassword() async {
     String email = _emailController.text;
     if (email.isNotEmpty) {
-      // Show a dialog for feedback
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Password Reset'),
-            content: Text('A password reset link has been sent to $email'),
-            actions: [
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                },
-              ),
-            ],
-          );
-        },
-      );
+      try {
+        // Send password reset email
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+        // Show dialog for feedback
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Password Reset'),
+              content: Text('A password reset link has been sent to $email'),
+              actions: [
+                TextButton(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      } catch (e) {
+        // Show an error message if sending fails
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send reset link: $e'),
+          ),
+        );
+      }
     } else {
       // Show an error if the email field is empty
       ScaffoldMessenger.of(context).showSnackBar(
@@ -39,6 +55,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
