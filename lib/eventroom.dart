@@ -386,46 +386,57 @@ class _EventRoomState extends State<EventRoom> {
                         ),
                       ),
                     SizedBox(height: 20),
-                    // **Added Semi-Transparent Black Layer Behind Buttons**
+                    // **Modified styling for the semi-transparent layer and its divisions**
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5), // Semi-transparent black layer
-                        borderRadius: BorderRadius.circular(10.0), // Optional: Rounded corners
+                        borderRadius: BorderRadius.circular(10.0),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 10.0), // Padding for vertical spacing
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Arrange Photo Button
-                          if (isHost)
-                            IconButton(
-                              icon: Icon(Icons.compare_arrows, color: Colors.white),
-                              onPressed: () {
-                                // Navigate to ArrangedPhotoPage without incrementing sortPhotoRequest
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => ArrangedPhotoPage(eventCode: widget.eventCode)),
-                                );
-                              },
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          children: [
+                            // First Division (Arrange Photo for host)
+                            Expanded(
+                              child: Center(
+                                child: isHost
+                                    ? IconButton(
+                                  icon: Icon(Icons.compare_arrows, color: Colors.white),
+                                  onPressed: () {
+                                    // Navigate to ArrangedPhotoPage
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => ArrangedPhotoPage(eventCode: widget.eventCode)),
+                                    );
+                                  },
+                                )
+                                    : SizedBox.shrink(),
+                              ),
                             ),
-                          // **Added Vertical Spacing Between Buttons**
-                          if (isHost)
-                            SizedBox(width: 20), // Horizontal spacing instead of Vertical since Row is horizontal
-                          // Upload Photo Button
-                          IconButton(
-                            icon: Icon(Icons.upload, color: Colors.white),
-                            onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
-                          ),
-                          // **Added Vertical Spacing Between Buttons**
-                          if (isHost)
-                            SizedBox(width: 20), // Horizontal spacing
-                          // Delete Room Button
-                          if (isHost)
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.white),
-                              onPressed: () => _showDeleteRoomDialog(context),
+                            VerticalDivider(color: Colors.white, thickness: 1, width: 1),
+                            // Second Division (Upload Photo)
+                            Expanded(
+                              child: Center(
+                                child: IconButton(
+                                  icon: Icon(Icons.upload, color: Colors.white),
+                                  onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
+                                ),
+                              ),
                             ),
-                        ],
+                            VerticalDivider(color: Colors.white, thickness: 1, width: 1),
+                            // Third Division (Delete Room for host)
+                            Expanded(
+                              child: Center(
+                                child: isHost
+                                    ? IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.white),
+                                  onPressed: () => _showDeleteRoomDialog(context),
+                                )
+                                    : SizedBox.shrink(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -473,13 +484,13 @@ class _EventRoomState extends State<EventRoom> {
                               _showImageGallery(images, guest['guestName'], false);
                             }
                           }
-                              : null, // Non-clickable for guests who are not the current user or host
+                              : null,
                           child: Icon(
                             Icons.folder,
                             color: (isHost || isCurrentUserGuest) ? Colors.black : Colors.white,
                           ),
                         )
-                            : SizedBox.shrink(), // No folder icon if no photos
+                            : SizedBox.shrink(),
                       );
                     },
                   ),
@@ -513,17 +524,27 @@ class _EventRoomState extends State<EventRoom> {
 
   void _uploadPhoto(BuildContext context, String userId, String username, bool isHost) async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
+    final images = await picker.pickMultiImage(); // Allow multiple image selection
 
-    if (image == null) return;
+    if (images == null || images.isEmpty) return;
 
     String baseFolderPath = 'rooms/${widget.eventCode}/$userId/';
-    final filePath = '${baseFolderPath}${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = _storage.ref().child(filePath);
+    final ref = _storage.ref().child(baseFolderPath);
 
-    final uploadTask = ref.putFile(File(image.path));
+    try {
+      for (var image in images) {
+        final filePath = '${baseFolderPath}${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+        final fileRef = _storage.ref().child(filePath);
+        final uploadTask = fileRef.putFile(File(image.path));
 
-    await uploadTask.whenComplete(() async {
+        await uploadTask.whenComplete(() async {
+          // Optionally handle individual completions
+        }).catchError((error) {
+          print('Upload failed for ${image.name}: $error');
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed for ${image.name}.')));
+        });
+      }
+
       if (isHost) {
         // Set folderPath to 'rooms/eventcode/hostId/'
         _databaseRef.child("rooms/${widget.eventCode}/hostUploadedPhotoFolderPath").set(baseFolderPath);
@@ -532,11 +553,11 @@ class _EventRoomState extends State<EventRoom> {
         _databaseRef.child("rooms/${widget.eventCode}/participants/$userId/folderPath").set(baseFolderPath);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo uploaded successfully!')));
-    }).catchError((error) {
-      print('Upload failed: $error');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photos uploaded successfully!')));
+    } catch (e) {
+      print('Upload failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed.')));
-    });
+    }
   }
 
   void _openPhotoGallery(BuildContext context, String userType, String userId, bool isSortedPhoto) async {
