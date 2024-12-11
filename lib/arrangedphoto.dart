@@ -12,7 +12,8 @@ import 'dart:convert';
 
 class ArrangedPhotoPage extends StatefulWidget {
   final String eventCode;
-
+  final ScrollController _participantsController = ScrollController();
+  final ScrollController _manualGuestsController = ScrollController();
   ArrangedPhotoPage({required this.eventCode});
 
   @override
@@ -117,97 +118,133 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     }
   }
 
-  Future<void> _downloadImagesAsZip(List<String> imageUrls, String participantName) async {
+  Future<void> _downloadImagesAsZip(List<String> imageUrls,
+      String participantName) async {
     try {
       // Request storage permission
       if (await Permission.storage.request().isGranted ||
           await Permission.manageExternalStorage.request().isGranted) {
-        // Show Downloading Dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) {
-            return DownloadingDialog();
-          },
-        );
-
-        final tempDir = await getTemporaryDirectory();
-        final zipFilePath = '${tempDir.path}/images.zip';
-
-        final encoder = ZipFileEncoder();
-        encoder.create(zipFilePath);
-
-        for (int i = 0; i < imageUrls.length; i++) {
-          final imageUrl = imageUrls[i];
-          final imageName = 'image_$i.jpg';
-
-          final response = await HttpClient().getUrl(Uri.parse(imageUrl));
-          final tempFile = File('${tempDir.path}/$imageName');
-          final imageStream = await response.close();
-          await imageStream.pipe(tempFile.openWrite());
-
-          encoder.addFile(tempFile);
-          await tempFile.delete();
-        }
-
-        encoder.close();
-
-        String zipFileName;
-        // Ensure participantName does not contain any invalid characters for filenames
-        String sanitizedParticipantName = participantName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-        zipFileName = '${sanitizedParticipantName}_uploaded.zip';
-
-        // Define the download path based on the platform
-        String downloadsPath;
-        if (Platform.isAndroid) {
-          downloadsPath = '/storage/emulated/0/Download';
-        } else if (Platform.isIOS) {
-          downloadsPath = (await getApplicationDocumentsDirectory()).path;
-        } else {
-          downloadsPath = tempDir.path; // Fallback for other platforms
-        }
-
-        final savePath = '$downloadsPath/$zipFileName';
-
-        final downloadsDir = Directory(downloadsPath);
-        if (!await downloadsDir.exists()) {
-          await downloadsDir.create(recursive: true);
-        }
-
-        final savedFile = await File(zipFilePath).copy(savePath);
-
-        // Dismiss Downloading Dialog
-        Navigator.pop(context);
-
-        // Show Download Complete Dialog
-        showDialog(
+        // Show confirmation dialog before downloading
+        final confirmDownload = await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: Text('Download Complete'),
-              content: Text('ZIP file saved to ${savedFile.path}'),
+              title: Text('Confirm Download'),
+              content: Text(
+                  'Do you want to download this folder as a ZIP file?'),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text('OK'),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('No'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Yes'),
                 ),
               ],
             );
           },
         );
+
+        if (confirmDownload == true) {
+          // Show downloading dialog using root navigator
+          showDialog(
+            context: context,
+            useRootNavigator: true, // Use root navigator to manage dialogs consistently
+            barrierDismissible: false,
+            builder: (context) {
+              return AlertDialog(
+                content: Row(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 20),
+                    Expanded(child: Text('Downloading...')),
+                  ],
+                ),
+              );
+            },
+          );
+
+          // Temporary directory for intermediate processing
+          final tempDir = await getTemporaryDirectory();
+          final zipFilePath = '${tempDir.path}/images.zip';
+
+          // Create ZIP file
+          final encoder = ZipFileEncoder();
+          encoder.create(zipFilePath);
+
+          // Add images to ZIP
+          for (int i = 0; i < imageUrls.length; i++) {
+            final imageUrl = imageUrls[i];
+            final imageName = 'image_$i.jpg';
+
+            // Download image to a temporary file
+            final response = await HttpClient().getUrl(Uri.parse(imageUrl));
+            final tempFile = File('${tempDir.path}/$imageName');
+            final imageStream = await response.close();
+            await imageStream.pipe(tempFile.openWrite());
+
+            // Add the file to the ZIP archive
+            encoder.addFile(tempFile);
+
+            // Clean up the temporary file
+            await tempFile.delete();
+          }
+
+          encoder.close();
+
+          // Define dynamic ZIP file name
+          final sanitizedEventCode = widget.eventCode.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
+          final sanitizedParticipantName = participantName.replaceAll(
+              RegExp(r'[^\w\s-]'), '');
+          final zipFileName = '${sanitizedEventCode}_$sanitizedParticipantName.zip';
+
+          // Save the ZIP file to the Downloads directory
+          final downloadsPath = '/storage/emulated/0/Download'; // General Downloads path
+          final savePath = '$downloadsPath/$zipFileName';
+
+          // Ensure the Downloads directory exists
+          final downloadsDir = Directory(downloadsPath);
+          if (!await downloadsDir.exists()) {
+            await downloadsDir.create(recursive: true);
+          }
+
+          // Copy the ZIP file to Downloads
+          final savedFile = await File(zipFilePath).copy(savePath);
+
+          // Dismiss the downloading dialog
+          Navigator.pop(context);
+
+          // **Show download complete dialog using root navigator after a slight delay**
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              useRootNavigator: true, // Ensures the dialog appears above all others
+              builder: (context) {
+                return AlertDialog(
+                  title: Text('Download Complete'),
+                  content: Text('ZIP file saved to ${savedFile.path}'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('OK'),
+                    ),
+                  ],
+                );
+              },
+            );
+          });
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Storage permission is required.')),
         );
       }
     } catch (e) {
+      // Dismiss the downloading dialog if open
+      Navigator.pop(context);
       print('Error downloading images as ZIP: $e');
-      // Dismiss Downloading Dialog if it's open
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save ZIP file.')),
       );
@@ -265,12 +302,21 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
         // Request storage permission
         if (await Permission.storage.request().isGranted ||
             await Permission.manageExternalStorage.request().isGranted) {
-          // Show loading indicator
+          // Show "Please wait" dialog
           showDialog(
             context: context,
+            useRootNavigator: true, // Use root navigator for consistency
             barrierDismissible: false,
             builder: (context) {
-              return WaitingDialog(message: 'Please wait while the email is being created...');
+              return AlertDialog(
+                content: Row(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 20),
+                    Expanded(child: Text('Please wait while your email is being created...')),
+                  ],
+                ),
+              );
             },
           );
 
@@ -311,14 +357,7 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           final zipFileName = '${sanitizedEventCode}_$sanitizedParticipantName.zip';
 
           // Save the ZIP file to the Downloads directory
-          String downloadsPath;
-          if (Platform.isAndroid) {
-            downloadsPath = '/storage/emulated/0/Download'; // General Downloads path
-          } else if (Platform.isIOS) {
-            downloadsPath = (await getApplicationDocumentsDirectory()).path;
-          } else {
-            downloadsPath = tempDir.path; // Fallback for other platforms
-          }
+          final downloadsPath = '/storage/emulated/0/Download'; // General Downloads path
           final savePath = '$downloadsPath/$zipFileName';
 
           // Ensure the Downloads directory exists
@@ -332,14 +371,10 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
 
           // Prepare the email with attachment
           body = 'Hello $name,\n\n'
-              'We are pleased to share your sorted photos with you, the photos from the $_roomName (${widget
-              .eventCode}). '
+              'We are pleased to share with you the sorted photos of yours from the event $_roomName. '
               'Please find your photos from the event in the attached file.\n\n'
               'Best regards,\n'
-              'Your Event Team\n'
-              'Developed By,\n'
-              'Tahmid, Disha, Anika from NSU';
-
+              'Your Event Team\nDeveloped By:\nTahmid, Disha, Anika from NSU';
 
           final Email mail = Email(
             body: body,
@@ -349,17 +384,17 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
             isHTML: false,
           );
 
-          // Dismiss the loading indicator
-          Navigator.pop(context);
-
           // Send the email
           try {
             await FlutterEmailSender.send(mail);
+            // Dismiss the "Please wait" dialog
+            Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Email sent to $email')),
             );
           } on PlatformException catch (ex) {
-            Navigator.pop(context); // Ensure the loading indicator is dismissed
+            // Dismiss the "Please wait" dialog
+            Navigator.pop(context);
             if (ex.code == 'not_available') {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(
@@ -373,14 +408,13 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
             }
           }
         } else {
-          Navigator.pop(
-              context); // Dismiss loading indicator if permission denied
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Storage permission is required.')),
           );
         }
       } catch (e) {
-        Navigator.pop(context); // Dismiss loading indicator in case of error
+        // Dismiss the "Please wait" dialog in case of error
+        Navigator.pop(context);
         print('Error sending email: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send email.')),
@@ -391,9 +425,7 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
       body = 'Hello $name,\n\n'
           'Your Photos have been sorted! Hurrah!!! Check our website at pictora.netlify.app or our app Pictora to get the photos from $_roomName (${widget.eventCode}).\n\n'
           'Best regards,\n'
-          'Your Event Team\n'
-          'Developed By,\n'
-          'Tahmid, Disha, Anika from NSU';
+          'Your Event Team\nDeveloped By:\nTahmid, Disha, Anika from NSU';
 
       final Email mail = Email(
         body: body,
@@ -403,25 +435,33 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
       );
 
       try {
-        // Show loading indicator
+        // Show "Please wait" dialog
         showDialog(
           context: context,
+          useRootNavigator: true, // Use root navigator for consistency
           barrierDismissible: false,
           builder: (context) {
-            return WaitingDialog(message: 'Please wait while the email is being created...');
+            return AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Expanded(child: Text('Please wait while your email is being sent...')),
+                ],
+              ),
+            );
           },
         );
 
         await FlutterEmailSender.send(mail);
-
-        // Dismiss the loading indicator
+        // Dismiss the "Please wait" dialog
         Navigator.pop(context);
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Email sent to $email')),
         );
       } on PlatformException catch (ex) {
-        Navigator.pop(context); // Ensure the loading indicator is dismissed
+        // Dismiss the "Please wait" dialog
+        Navigator.pop(context);
         if (ex.code == 'not_available') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(
@@ -429,11 +469,13 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send email. Error: ${ex.message}')),
+            SnackBar(
+                content: Text('Failed to send email. Error: ${ex.message}')),
           );
         }
       } catch (e) {
-        Navigator.pop(context); // Dismiss loading indicator in case of error
+        // Dismiss the "Please wait" dialog
+        Navigator.pop(context);
         print('Error sending email: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send email.')),
@@ -446,11 +488,7 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
   Future<void> _sendEmailToAll() async {
     final List<String> emails =
     _participants.map((participant) => participant['email'] as String).toList();
-
-    // Include manual participants' emails as well
-    final List<String> manualEmails =
-    _manualParticipants.map((participant) => participant['email'] as String).toList();
-    emails.addAll(manualEmails);
+    // Exclude manual guests' emails
 
     if (emails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -463,9 +501,7 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     final String body = 'Hello everyone,\n\n'
         'Your Photos have been sorted! Hurrah!!! Check our website at pictora.netlify.app or our app Pictora to get the photos from $_roomName (${widget.eventCode}).\n\n'
         'Best regards,\n'
-        'Your Event Team\n'
-        'Developed By,\n'
-        'Tahmid, Disha, Anika from NSU';
+        'Your Event Team\nDeveloped By:\nTahmid, Disha, Anika from NSU';
 
     final Email mail = Email(
       body: body,
@@ -475,25 +511,33 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     );
 
     try {
-      // Show loading indicator
+      // Show "Please wait" dialog
       showDialog(
         context: context,
+        useRootNavigator: true, // Use root navigator for consistency
         barrierDismissible: false,
         builder: (context) {
-          return WaitingDialog(message: 'Please wait while the email is being created...');
+          return AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Expanded(child: Text('Please wait while your email is being sent...')),
+              ],
+            ),
+          );
         },
       );
 
       await FlutterEmailSender.send(mail);
-
-      // Dismiss the loading indicator
+      // Dismiss the "Please wait" dialog
       Navigator.pop(context);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Email sent to all participants')),
       );
     } on PlatformException catch (ex) {
-      Navigator.pop(context); // Ensure the loading indicator is dismissed
+      // Dismiss the "Please wait" dialog
+      Navigator.pop(context);
       if (ex.code == 'not_available') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(
@@ -505,7 +549,8 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
         );
       }
     } catch (e) {
-      Navigator.pop(context); // Dismiss loading indicator in case of error
+      // Dismiss the "Please wait" dialog
+      Navigator.pop(context);
       print('Error sending email to all: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send email to all participants.')),
@@ -516,18 +561,109 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
   Widget _buildParticipantItem(Map<String, dynamic> participant) {
     return GestureDetector(
       onTap: () async {
-        // Open the image gallery dialog
+        // Show image gallery dialog with loading indicator
         showDialog(
           context: context,
+          useRootNavigator: true, // Use root navigator for consistency
           builder: (context) {
-            return ImageGalleryDialog(
-              folderPath: participant['folderPath'],
-              participantName: participant['name'],
-              isManual: participant['isManual'],
-              participant: participant,
-              onDownloadComplete: () {
-                // Optional callback after download completes
-              },
+            return Dialog(
+              child: FutureBuilder<List<String>>(
+                future: _fetchImages(participant['folderPath']),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    // Show loading indicator while fetching images
+                    return Container(
+                      padding: EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 20),
+                          Expanded(child: Text('Loading photos...')),
+                        ],
+                      ),
+                    );
+                  } else if (snapshot.hasError) {
+                    // Show error message
+                    return AlertDialog(
+                      title: Text('Error'),
+                      content: Text('Failed to load photos.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Close'),
+                        ),
+                      ],
+                    );
+                  } else {
+                    final images = snapshot.data ?? [];
+                    if (images.isEmpty) {
+                      return AlertDialog(
+                        title: Text('No Photos'),
+                        content: Text('No photos uploaded for this participant.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('Close'),
+                          ),
+                        ],
+                      );
+                    } else {
+                      return Column(
+                        children: [
+                          // Gallery Section
+                          Expanded(
+                            child: GridView.builder(
+                              padding: EdgeInsets.all(8.0),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: 4,
+                                crossAxisSpacing: 4,
+                              ),
+                              itemCount: images.length,
+                              itemBuilder: (context, index) {
+                                return Image.network(images[index], fit: BoxFit.cover);
+                              },
+                            ),
+                          ),
+                          // Buttons Section
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      await _downloadImagesAsZip(images, participant['name']);
+                                      Navigator.pop(context); // Close dialog after download
+                                    },
+                                    icon: Icon(Icons.download),
+                                    label: Text('Download All'),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      await _sendEmail(participant);
+                                    },
+                                    icon: Icon(Icons.mail),
+                                    label: Text('Send Mail'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green, // Correctly updated
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  }
+                },
+              ),
             );
           },
         );
@@ -583,14 +719,17 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
     );
   }
 
+  final ScrollController _participantsController = ScrollController();
+  final ScrollController _manualGuestsController = ScrollController();
+
   @override
   void dispose() {
-    // Don't forget to dispose of your ScrollControllers
-    // If you have any, but in this code, they are not defined here.
+    // Dispose of your ScrollControllers
+    _participantsController.dispose();
+    _manualGuestsController.dispose();
     super.dispose();
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       // Removed the AppBar to allow the background image to occupy the entire screen
@@ -656,11 +795,14 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
                         // Scrollable Participants List
                         Expanded(
                           child: Scrollbar(
-                            child: ListView.builder(
-                              itemCount: _participants.length,
-                              itemBuilder: (context, index) {
-                                return _buildParticipantItem(_participants[index]);
-                              },
+                            controller: _participantsController,
+                            child: SingleChildScrollView(
+                              controller: _participantsController,
+                              child: Column(
+                                children: _participants
+                                    .map((participant) => _buildParticipantItem(participant))
+                                    .toList(),
+                              ),
                             ),
                           ),
                         ),
@@ -680,11 +822,14 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
                         // Scrollable Manual Guests List
                         Expanded(
                           child: Scrollbar(
-                            child: ListView.builder(
-                              itemCount: _manualParticipants.length,
-                              itemBuilder: (context, index) {
-                                return _buildParticipantItem(_manualParticipants[index]);
-                              },
+                            controller: _manualGuestsController,
+                            child: SingleChildScrollView(
+                              controller: _manualGuestsController,
+                              child: Column(
+                                children: _manualParticipants
+                                    .map((manualParticipant) => _buildParticipantItem(manualParticipant))
+                                    .toList(),
+                              ),
                             ),
                           ),
                         ),
@@ -695,193 +840,6 @@ class _ArrangedPhotoPageState extends State<ArrangedPhotoPage> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class ImageGalleryDialog extends StatefulWidget {
-  final String folderPath;
-  final String participantName;
-  final bool isManual;
-  final Map<String, dynamic> participant;
-  final VoidCallback? onDownloadComplete;
-
-  ImageGalleryDialog({
-    required this.folderPath,
-    required this.participantName,
-    required this.isManual,
-    required this.participant,
-    this.onDownloadComplete,
-  });
-
-  @override
-  _ImageGalleryDialogState createState() => _ImageGalleryDialogState();
-}
-
-class _ImageGalleryDialogState extends State<ImageGalleryDialog> {
-  List<String> images = [];
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadImages();
-  }
-
-  Future<void> _loadImages() async {
-    try {
-      final storage = FirebaseStorage.instance;
-      final ref = storage.ref(widget.folderPath);
-      final listResult = await ref.listAll();
-
-      List<String> fetchedImages = [];
-      for (var item in listResult.items) {
-        final url = await item.getDownloadURL();
-        fetchedImages.add(url);
-      }
-
-      setState(() {
-        images = fetchedImages;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Error loading images in gallery dialog: $e');
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load images.')),
-      );
-    }
-  }
-
-  Future<void> _handleDownloadAll() async {
-    if (images.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No images to download.')),
-      );
-      return;
-    }
-    await (context.findAncestorStateOfType<_ArrangedPhotoPageState>()?._downloadImagesAsZip(
-      images,
-      widget.participantName,
-    ) ??
-        Future.value());
-
-    // Optionally, you can trigger a callback after download
-    if (widget.onDownloadComplete != null) {
-      widget.onDownloadComplete!();
-    }
-
-    Navigator.pop(context); // Close the gallery dialog after download
-  }
-
-  Future<void> _handleSendMail() async {
-    await (context.findAncestorStateOfType<_ArrangedPhotoPageState>()?._sendEmail(
-      widget.participant,
-    ) ??
-        Future.value());
-
-    Navigator.pop(context); // Close the gallery dialog after sending email
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Column(
-        children: [
-          // Close button at upper right corner
-          Align(
-            alignment: Alignment.topRight,
-            child: IconButton(
-              icon: Icon(Icons.close, color: Colors.red),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          Expanded(
-            child: isLoading
-                ? Center(child: CircularProgressIndicator())
-                : images.isNotEmpty
-                ? GridView.builder(
-              padding: EdgeInsets.all(8.0),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-              ),
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                return Image.network(images[index], fit: BoxFit.cover);
-              },
-            )
-                : Center(child: Text('No Photos Uploaded')),
-          ),
-          if (!isLoading && images.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _handleDownloadAll,
-                      icon: Icon(Icons.download),
-                      label: Text('Download All'),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _handleSendMail,
-                      icon: Icon(Icons.mail),
-                      label: Text('Send Mail'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Correctly updated
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class DownloadingDialog extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Downloading'),
-      content: Row(
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(width: 20),
-          Expanded(child: Text('Please wait while your download is in progress...')),
-        ],
-      ),
-    );
-  }
-}
-
-class WaitingDialog extends StatelessWidget {
-  final String message;
-
-  WaitingDialog({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Please Wait'),
-      content: Row(
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(width: 20),
-          Expanded(child: Text(message)),
         ],
       ),
     );
