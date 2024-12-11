@@ -145,80 +145,85 @@ class _EventRoomState extends State<EventRoom> {
       // Request storage permissions
       if (await Permission.storage.request().isGranted ||
           await Permission.manageExternalStorage.request().isGranted) {
-        final confirmDownload = await showDialog<bool>(
+        // Show Downloading Dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return DownloadingDialog(message: 'Downloading...');
+          },
+        );
+
+        final tempDir = await getTemporaryDirectory();
+        final zipFilePath = '${tempDir.path}/images.zip';
+
+        final encoder = ZipFileEncoder();
+        encoder.create(zipFilePath);
+
+        for (int i = 0; i < imageUrls.length; i++) {
+          final imageUrl = imageUrls[i];
+          final imageName = 'image_$i.jpg';
+
+          final response = await HttpClient().getUrl(Uri.parse(imageUrl));
+          final tempFile = File('${tempDir.path}/$imageName');
+          final imageStream = await response.close();
+          await imageStream.pipe(tempFile.openWrite());
+
+          encoder.addFile(tempFile);
+          await tempFile.delete();
+        }
+
+        encoder.close();
+
+        String zipFileName;
+        if (isSortedPhoto) {
+          zipFileName = 'sortedphoto.zip';
+        } else {
+          // Ensure participantName does not contain any invalid characters for filenames
+          String sanitizedParticipantName = participantName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+          zipFileName = '${sanitizedParticipantName}_uploaded.zip';
+        }
+
+        // Define the download path based on the platform
+        String downloadsPath;
+        if (Platform.isAndroid) {
+          downloadsPath = '/storage/emulated/0/Download';
+        } else if (Platform.isIOS) {
+          downloadsPath = (await getApplicationDocumentsDirectory()).path;
+        } else {
+          downloadsPath = tempDir.path; // Fallback for other platforms
+        }
+
+        final savePath = '$downloadsPath/$zipFileName';
+
+        final downloadsDir = Directory(downloadsPath);
+        if (!await downloadsDir.exists()) {
+          await downloadsDir.create(recursive: true);
+        }
+
+        final savedFile = await File(zipFilePath).copy(savePath);
+
+        // Dismiss Downloading Dialog
+        Navigator.pop(context);
+
+        // Show Download Complete Dialog
+        showDialog(
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: Text('Confirm Download'),
-              content: Text('Do you want to download this folder as a ZIP file?'),
+              title: Text('Download Complete'),
+              content: Text('ZIP file saved to ${savedFile.path}'),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('No'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Yes'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('OK'),
                 ),
               ],
             );
           },
         );
-
-        if (confirmDownload == true) {
-          final tempDir = await getTemporaryDirectory();
-          final zipFilePath = '${tempDir.path}/images.zip';
-
-          final encoder = ZipFileEncoder();
-          encoder.create(zipFilePath);
-
-          for (int i = 0; i < imageUrls.length; i++) {
-            final imageUrl = imageUrls[i];
-            final imageName = 'image_$i.jpg';
-
-            final response = await HttpClient().getUrl(Uri.parse(imageUrl));
-            final tempFile = File('${tempDir.path}/$imageName');
-            final imageStream = await response.close();
-            await imageStream.pipe(tempFile.openWrite());
-
-            encoder.addFile(tempFile);
-            await tempFile.delete();
-          }
-
-          encoder.close();
-
-          String zipFileName;
-          if (isSortedPhoto) {
-            zipFileName = 'sortedphoto.zip';
-          } else {
-            // Ensure participantName does not contain any invalid characters for filenames
-            String sanitizedParticipantName = participantName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-            zipFileName = '${sanitizedParticipantName}_uploaded.zip';
-          }
-
-          // Define the download path based on the platform
-          String downloadsPath;
-          if (Platform.isAndroid) {
-            downloadsPath = '/storage/emulated/0/Download';
-          } else if (Platform.isIOS) {
-            downloadsPath = (await getApplicationDocumentsDirectory()).path;
-          } else {
-            downloadsPath = tempDir.path; // Fallback for other platforms
-          }
-
-          final savePath = '$downloadsPath/$zipFileName';
-
-          final downloadsDir = Directory(downloadsPath);
-          if (!await downloadsDir.exists()) {
-            await downloadsDir.create(recursive: true);
-          }
-
-          final savedFile = await File(zipFilePath).copy(savePath);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ZIP file saved to ${savedFile.path}')),
-          );
-        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Storage permission is required.')),
@@ -226,6 +231,10 @@ class _EventRoomState extends State<EventRoom> {
       }
     } catch (e) {
       print('Error downloading images as ZIP: $e');
+      // Dismiss Downloading Dialog if it's open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save ZIP file.')),
       );
@@ -252,58 +261,18 @@ class _EventRoomState extends State<EventRoom> {
     );
   }
 
-  void _showImageGallery(List<String> images, String participantName, bool isSortedPhoto) {
+  void _openImageGallery(String folderPath, String participantName, bool isSortedPhoto) {
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          child: Column(
-            children: [
-              // Close button at upper right corner
-              Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: Icon(Icons.close, color: Colors.red),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              Expanded(
-                child: images.isNotEmpty
-                    ? GridView.builder(
-                  padding: EdgeInsets.all(8.0),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
-                  ),
-                  itemCount: images.length,
-                  itemBuilder: (context, index) {
-                    return Image.network(images[index], fit: BoxFit.cover);
-                  },
-                )
-                    : Center(child: Text('No Photos Uploaded')),
-              ),
-              if (images.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await _downloadImagesAsZip(images, participantName, isSortedPhoto);
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                    ),
-                    child: Text(
-                      'Download All',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        return ImageGalleryDialog(
+          folderPath: folderPath,
+          participantName: participantName,
+          isSortedPhoto: isSortedPhoto,
+          onDownloadAll: (List<String> images) async {
+            Navigator.pop(context); // Close the gallery dialog
+            await _downloadImagesAsZip(images, participantName, isSortedPhoto);
+          },
         );
       },
     );
@@ -318,208 +287,206 @@ class _EventRoomState extends State<EventRoom> {
 
     return Scaffold(
       body: Stack(
-        fit: StackFit.expand,
-        children: [
+          fit: StackFit.expand,
+          children: [
           Image.asset('assets/hpbg1.png', fit: BoxFit.cover),
-          Column(
-            children: [
-              // Top Navigation Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.black),
-                      onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
-                              (route) => false,
-                        );
-                      },
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          'Event Room',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 40), // Spacer to balance the back button
-                  ],
+      Column(
+        children: [
+          // Top Navigation Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
+                          (route) => false,
+                    );
+                  },
                 ),
-              ),
-              // Center-Aligned Room and Host Information
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center, // Center alignment
-                  children: [
-                    Text(
-                      roomData['roomName'] ?? 'No Room Name',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
-                      textAlign: TextAlign.center, // Center the text
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Event Room',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
-                    SizedBox(height: 5),
-                    Text('Room Code: ${widget.eventCode}', style: TextStyle(fontSize: 16, color: Colors.black)),
-                    Text('Host: $hostName', style: TextStyle(fontSize: 16, color: Colors.black)),
-                    if (hostPhotoUrl != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                        child: CircleAvatar(backgroundImage: NetworkImage(hostPhotoUrl!), radius: 30),
-                      ),
-                    SizedBox(height: 10),
-                    // **Host Folder Icon (visible to all if host has uploaded photos)**
-                    if (hostHasUploadedPhotos)
-                      GestureDetector(
-                        onTap: isHost
-                            ? () {
-                          // Host can access their own folder
-                          _openPhotoGallery(context, 'host', roomData['hostId'], false);
-                        }
-                            : null, // Guests cannot access host's folder
-                        child: Icon(
-                          Icons.folder,
-                          color: isHost ? Colors.black : Colors.white, // Greyed out if not clickable
-                          size: 30,
-                        ),
-                      ),
-                    SizedBox(height: 20),
-                    // **Modified styling for the semi-transparent layer and its divisions**
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5), // Semi-transparent black layer
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 10.0),
-                      child: IntrinsicHeight(
-                        child: Row(
-                          children: [
-                            // First Division (Arrange Photo for host)
-                            Expanded(
-                              child: Center(
-                                child: isHost
-                                    ? IconButton(
-                                  icon: Icon(Icons.compare_arrows, color: Colors.white),
-                                  onPressed: () {
-                                    // Navigate to ArrangedPhotoPage
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => ArrangedPhotoPage(eventCode: widget.eventCode)),
-                                    );
-                                  },
-                                )
-                                    : SizedBox.shrink(),
-                              ),
-                            ),
-                            VerticalDivider(color: Colors.white, thickness: 1, width: 1),
-                            // Second Division (Upload Photo)
-                            Expanded(
-                              child: Center(
-                                child: IconButton(
-                                  icon: Icon(Icons.upload, color: Colors.white),
-                                  onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
-                                ),
-                              ),
-                            ),
-                            VerticalDivider(color: Colors.white, thickness: 1, width: 1),
-                            // Third Division (Delete Room for host)
-                            Expanded(
-                              child: Center(
-                                child: isHost
-                                    ? IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.white),
-                                  onPressed: () => _showDeleteRoomDialog(context),
-                                )
-                                    : SizedBox.shrink(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              // Guest List with Scrollbar
-              Expanded(
-                child: Scrollbar(
-                  thumbVisibility: true, // Ensure scrollbar is visible when needed
-                  thickness: 6.0, // Thickness of the scrollbar
-                  radius: Radius.circular(10), // Rounded corners for scrollbar
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
-                    itemCount: guestList.length + 1, // +1 for the "Guests:" header
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10.0),
-                          child: Text(
-                            'Guests:',
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-                            textAlign: TextAlign.center,
+                SizedBox(width: 40), // Spacer to balance the back button
+              ],
+            ),
+          ),
+          // Center-Aligned Room and Host Information
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center, // Center alignment
+              children: [
+                Text(
+                  roomData['roomName'] ?? 'No Room Name',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                  textAlign: TextAlign.center, // Center the text
+                ),
+                SizedBox(height: 5),
+                Text('Room Code: ${widget.eventCode}', style: TextStyle(fontSize: 16, color: Colors.black)),
+                Text('Host: $hostName', style: TextStyle(fontSize: 16, color: Colors.black)),
+                if (hostPhotoUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                    child: CircleAvatar(backgroundImage: NetworkImage(hostPhotoUrl!), radius: 30),
+                  ),
+                SizedBox(height: 10),
+                // **Host Folder Icon (visible to all if host has uploaded photos)**
+                if (hostHasUploadedPhotos)
+                  GestureDetector(
+                    onTap: isHost
+                        ? () {
+                      // Host can access their own folder
+                      String folderPath = 'rooms/${widget.eventCode}/${roomData['hostId']}/';
+                      _openImageGallery(folderPath, hostName, false);
+                    }
+                        : null, // Guests cannot access host's folder
+                    child: Icon(
+                      Icons.folder,
+                      color: isHost ? Colors.black : Colors.white, // Greyed out if not clickable
+                      size: 30,
+                    ),
+                  ),
+                SizedBox(height: 20),
+                // **Modified styling for the semi-transparent layer and its divisions**
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5), // Semi-transparent black layer
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 10.0),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        // First Division (Arrange Photo for host)
+                        Expanded(
+                          child: Center(
+                            child: isHost
+                                ? IconButton(
+                              icon: Icon(Icons.compare_arrows, color: Colors.white),
+                              onPressed: () {
+                                // Navigate to ArrangedPhotoPage
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          ArrangedPhotoPage(eventCode: widget.eventCode)),
+                                );
+                              },
+                            )
+                                : SizedBox.shrink(),
                           ),
-                        );
+                        ),
+                        VerticalDivider(color: Colors.white, thickness: 1, width: 1),
+                        // Second Division (Upload Photo)
+                        Expanded(
+                          child: Center(
+                            child: IconButton(
+                              icon: Icon(Icons.upload, color: Colors.white),
+                              onPressed: () => _uploadPhoto(context, currentUserId, username, isHost),
+                            ),
+                          ),
+                        ),
+                        VerticalDivider(color: Colors.white, thickness: 1, width: 1),
+                        // Third Division (Delete Room for host)
+                        Expanded(
+                          child: Center(
+                            child: isHost
+                                ? IconButton(
+                              icon: Icon(Icons.delete, color: Colors.white),
+                              onPressed: () => _showDeleteRoomDialog(context),
+                            )
+                                : SizedBox.shrink(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Guest List with Scrollbar
+          Expanded(
+            child: Scrollbar(
+              thumbVisibility: true, // Ensure scrollbar is visible when needed
+              thickness: 6.0, // Thickness of the scrollbar
+              radius: Radius.circular(10), // Rounded corners for scrollbar
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
+                itemCount: guestList.length + 1, // +1 for the "Guests:" header
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: Text(
+                        'Guests:',
+                        style:
+                        TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  final guest = guestList[index - 1];
+                  bool hasUploadedPhoto = guest['guestUploadedPhotoFile'] != null;
+                  bool isCurrentUserGuest = guest['guestId'] == currentUserId;
+
+                  return ListTile(
+                    leading: guest['guestPhotoUrl'] != null
+                        ? CircleAvatar(backgroundImage: NetworkImage(guest['guestPhotoUrl']!), radius: 25)
+                        : CircleAvatar(backgroundColor: Colors.grey, radius: 25),
+                    title: Text(guest['guestName'], style: TextStyle(color: Colors.black)),
+                    trailing: hasUploadedPhoto
+                        ? GestureDetector(
+                      onTap: (isHost || isCurrentUserGuest)
+                          ? () async {
+                        String folderPath = 'rooms/${widget.eventCode}/${guest['guestId']}/';
+                        String participantName = guest['guestName'] ?? 'Unknown Guest';
+                        _openImageGallery(folderPath, participantName, false);
                       }
-
-                      final guest = guestList[index - 1];
-                      bool hasUploadedPhoto = guest['guestUploadedPhotoFile'] != null;
-                      bool isCurrentUserGuest = guest['guestId'] == currentUserId;
-
-                      return ListTile(
-                        leading: guest['guestPhotoUrl'] != null
-                            ? CircleAvatar(backgroundImage: NetworkImage(guest['guestPhotoUrl']!), radius: 25)
-                            : CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-                        title: Text(guest['guestName'], style: TextStyle(color: Colors.black)),
-                        trailing: hasUploadedPhoto
-                            ? GestureDetector(
-                          onTap: (isHost || isCurrentUserGuest)
-                              ? () async {
-                            String folderPath = 'rooms/${widget.eventCode}/${guest['guestId']}/';
-                            List<String> images = await _fetchImages(folderPath);
-                            if (images.isEmpty) {
-                              _showNoPhotosMessage();
-                            } else {
-                              _showImageGallery(images, guest['guestName'], false);
-                            }
-                          }
-                              : null,
-                          child: Icon(
-                            Icons.folder,
-                            color: (isHost || isCurrentUserGuest) ? Colors.black : Colors.white,
-                          ),
-                        )
-                            : SizedBox.shrink(),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              // Sorted Photo Button positioned at the bottom center
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _handleSortedPhotos(context, currentUserId),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18.0),
+                          : null,
+                      child: Icon(
+                        Icons.folder,
+                        color: (isHost || isCurrentUserGuest) ? Colors.black : Colors.white,
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    icon: Icon(Icons.sort, color: Colors.white),
-                    label: Text('Sorted Photo', style: TextStyle(color: Colors.white)),
-                  ),
-                ),
+                    )
+                        : SizedBox.shrink(),
+                  );
+                },
               ),
-            ],
+            ),
+          ),
+          // Sorted Photo Button positioned at the bottom center
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: ElevatedButton.icon(
+                onPressed: () => _handleSortedPhotos(context, currentUserId),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18.0),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                icon: Icon(Icons.sort, color: Colors.white),
+                label: Text('Sorted Photo', style: TextStyle(color: Colors.white)),
+              ),
+            ),
           ),
         ],
       ),
-    );
+  ]));
   }
 
   void _uploadPhoto(BuildContext context, String userId, String username, bool isHost) async {
@@ -541,7 +508,8 @@ class _EventRoomState extends State<EventRoom> {
           // Optionally handle individual completions
         }).catchError((error) {
           print('Upload failed for ${image.name}: $error');
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed for ${image.name}.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Photo upload failed for ${image.name}.')));
         });
       }
 
@@ -557,34 +525,6 @@ class _EventRoomState extends State<EventRoom> {
     } catch (e) {
       print('Upload failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed.')));
-    }
-  }
-
-  void _openPhotoGallery(BuildContext context, String userType, String userId, bool isSortedPhoto) async {
-    String folderPath;
-    if (isSortedPhoto) {
-      folderPath = 'rooms/${widget.eventCode}/$userId/photos/';
-    } else {
-      folderPath = 'rooms/${widget.eventCode}/$userId/';
-    }
-
-    final images = await _fetchImages(folderPath);
-    if (images.isEmpty) {
-      _showNoPhotosMessage();
-    } else {
-      // Determine participant's name for zip naming
-      String participantName;
-      if (userType == 'host') {
-        participantName = hostName;
-      } else {
-        final guest = guestList.firstWhere(
-              (guest) => guest['guestId'] == userId,
-          orElse: () => {'guestName': 'Unknown Guest'},
-        );
-        participantName = guest['guestName'];
-      }
-
-      _showImageGallery(images, participantName, isSortedPhoto);
     }
   }
 
@@ -604,7 +544,8 @@ class _EventRoomState extends State<EventRoom> {
               onPressed: () async {
                 try {
                   await _databaseRef.child("rooms/${widget.eventCode}").remove();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Room deleted successfully.')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Room deleted successfully.')));
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (context) => CreateOrJoinRoomPage()),
@@ -612,7 +553,8 @@ class _EventRoomState extends State<EventRoom> {
                   );
                 } catch (e) {
                   print('Error deleting room: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete room.')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to delete room.')));
                 }
               },
               child: Text('Yes'),
@@ -647,7 +589,141 @@ class _EventRoomState extends State<EventRoom> {
         );
         participantName = guest['guestName'];
       }
-      _showImageGallery(images, participantName, isSortedPhoto);
+      _openImageGallery(folderPath, participantName, isSortedPhoto);
     }
+  }
+}
+
+class ImageGalleryDialog extends StatefulWidget {
+  final String folderPath;
+  final String participantName;
+  final bool isSortedPhoto;
+  final Function(List<String>) onDownloadAll;
+
+  ImageGalleryDialog({
+    required this.folderPath,
+    required this.participantName,
+    required this.isSortedPhoto,
+    required this.onDownloadAll,
+  });
+
+  @override
+  _ImageGalleryDialogState createState() => _ImageGalleryDialogState();
+}
+
+class _ImageGalleryDialogState extends State<ImageGalleryDialog> {
+  List<String> images = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImages();
+  }
+
+  Future<void> _loadImages() async {
+    try {
+      final storage = FirebaseStorage.instance;
+      final ref = storage.ref(widget.folderPath);
+      final listResult = await ref.listAll();
+
+      List<String> fetchedImages = [];
+      for (var item in listResult.items) {
+        final url = await item.getDownloadURL();
+        fetchedImages.add(url);
+      }
+
+      setState(() {
+        images = fetchedImages;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading images in gallery dialog: $e');
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load images.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        // Set a fixed height for the dialog to prevent overflow
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          children: [
+            // Close button at upper right corner
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: Icon(Icons.close, color: Colors.red),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            Expanded(
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : images.isNotEmpty
+                  ? GridView.builder(
+                padding: EdgeInsets.all(8.0),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                ),
+                itemCount: images.length,
+                itemBuilder: (context, index) {
+                  return Image.network(images[index], fit: BoxFit.cover);
+                },
+              )
+                  : Center(child: Text('No Photos Uploaded')),
+            ),
+            if (!isLoading && images.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Trigger the download process via callback
+                    widget.onDownloadAll(images);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                  ),
+                  child: Text(
+                    'Download All',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DownloadingDialog extends StatelessWidget {
+  final String message;
+
+  DownloadingDialog({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(message),
+      content: Row(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 20),
+          Expanded(child: Text('Please wait while your download is in progress...')),
+        ],
+      ),
+    );
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'forgot_password.dart';
 import 'createorjoinroom.dart';
@@ -14,6 +13,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
+  bool _isLoading = false; // Tracks if a loading indicator should be shown
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final TextEditingController _emailController = TextEditingController();
@@ -167,6 +167,14 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+          // Loading Indicator Overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
         ],
       ),
     );
@@ -207,7 +215,7 @@ class _LoginPageState extends State<LoginPage> {
           .user;
 
       if (user != null) {
-        _checkIfUserExists(user); // Check if the user exists
+        await _checkIfUserExists(user); // Check if the user exists
       }
     } catch (e) {
       print('Login Error: $e');
@@ -240,6 +248,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
     try {
       // Sign out from the current Google account to reset the session
       await _googleSignIn.signOut();
@@ -247,7 +259,11 @@ class _LoginPageState extends State<LoginPage> {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        return; // User canceled the sign-in
+        // User canceled the sign-in
+        setState(() {
+          _isLoading = false; // Hide loading indicator
+        });
+        return;
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -260,17 +276,25 @@ class _LoginPageState extends State<LoginPage> {
       final User? user = (await _auth.signInWithCredential(credential)).user;
 
       if (user != null) {
-        _checkIfUserExists(user); // Check if the user exists
+        await _checkIfUserExists(user); // Check if the user exists
       }
+
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
     } catch (e) {
       print('Google Sign-In Error: $e');
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
       _showErrorDialog('An error occurred during Google Sign-In. Please try again.');
     }
   }
 
-  void _checkIfUserExists(User user) async {
+  // Changed return type from void to Future<void>
+  Future<void> _checkIfUserExists(User user) async {
     try {
-      // Check if the user exists in Firebase (Firestore or Realtime Database)
+      // Reference to the user's data in Realtime Database
       final userRef = FirebaseDatabase.instance.ref('users/${user.uid}');
       final snapshot = await userRef.get();
 
@@ -282,11 +306,13 @@ class _LoginPageState extends State<LoginPage> {
               (route) => false,
         );
       } else {
-        // User does not exist, sign out and show error
+        // User does not exist, delete the Auth user and show error
+        await user.delete();
         await _auth.signOut();
         _showErrorDialog('You are not registered. Please sign up first.');
       }
     } catch (e) {
+      print('Error checking user existence: $e');
       _showErrorDialog('Error checking user existence.');
     }
   }
@@ -299,7 +325,9 @@ class _LoginPageState extends State<LoginPage> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog
+            },
             child: Text('OK'),
           ),
         ],
