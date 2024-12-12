@@ -75,3 +75,7 @@ Pictora is a Flutter-based mobile application designed for event organization an
     Muhammad Tahmidur Rahman
     Mohosina Islam Disha
     Anika Tabassum
+
+
+For the web version go to this git repository: "https://github.com/MuhammadTahmidurRahman/pictora.git"
+
