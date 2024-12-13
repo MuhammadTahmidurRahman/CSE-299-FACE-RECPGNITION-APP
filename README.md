@@ -80,3 +80,5 @@ Pictora is a Flutter-based mobile application designed for event organization an
 For the web version go to this git repository: "https://github.com/MuhammadTahmidurRahman/pictora.git"
 
 For the backend go to this git repository: "https://github.com/MuhammadTahmidurRahman/Face_Recognition_UsingOPENCV_HARCASCADE_FACE_RECOGNITION-pictorabackend-"
+
+App UI link: https://github.com/MuhammadTahmidurRahman/CSE-299-FACE-RECPGNITION-APP/tree/main/APP%20UI
